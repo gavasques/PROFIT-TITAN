@@ -43,9 +43,16 @@ export const amazonAccounts = pgTable("amazon_accounts", {
   marketplaceId: varchar("marketplace_id").notNull(), // e.g., "ATVPDKIKX0DER" for US
   sellerId: varchar("seller_id").notNull(),
   accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
+  refreshToken: text("refresh_token").notNull(),
   tokenExpiresAt: timestamp("token_expires_at"),
-  connectionStatus: varchar("connection_status").notNull().default("active"), // active, error, disconnected
+  // SP-API Credentials
+  lwaAppId: varchar("lwa_app_id").notNull(),
+  lwaClientSecret: text("lwa_client_secret").notNull(),
+  awsAccessKey: varchar("aws_access_key").notNull(),
+  awsSecretKey: text("aws_secret_key").notNull(),
+  awsRole: text("aws_role").notNull(),
+  region: varchar("region").notNull().default("na"), // na, eu, fe
+  status: varchar("status").notNull().default("pending"), // pending, connected, error, disconnected
   lastSyncAt: timestamp("last_sync_at"),
   accountName: varchar("account_name").notNull(), // User-friendly name like "Amazon US", "Amazon BR"
   createdAt: timestamp("created_at").defaultNow(),
@@ -56,11 +63,12 @@ export const amazonAccounts = pgTable("amazon_accounts", {
 export const products = pgTable("products", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  internalSku: varchar("internal_sku").notNull(),
+  sku: varchar("sku").notNull(), // Internal SKU
   name: varchar("name").notNull(),
   description: text("description"),
   category: varchar("category"),
   brand: varchar("brand"),
+  imageUrl: varchar("image_url"),
   weight: decimal("weight", { precision: 10, scale: 3 }),
   length: decimal("length", { precision: 10, scale: 2 }),
   width: decimal("width", { precision: 10, scale: 2 }),
@@ -108,11 +116,12 @@ export const salesOrders = pgTable("sales_orders", {
   amazonAccountId: uuid("amazon_account_id").notNull().references(() => amazonAccounts.id, { onDelete: "cascade" }),
   amazonOrderId: varchar("amazon_order_id").notNull().unique(),
   orderDate: timestamp("order_date").notNull(),
-  orderStatus: varchar("order_status").notNull(),
-  fulfillmentChannel: varchar("fulfillment_channel").notNull(), // FBA, FBM
-  salesChannel: varchar("sales_channel"),
+  status: varchar("status").notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency").notNull().default("USD"),
+  buyerEmail: varchar("buyer_email"),
+  shippingAddress: text("shipping_address"),
+  marketplace: varchar("marketplace"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -121,13 +130,13 @@ export const salesOrders = pgTable("sales_orders", {
 export const salesOrderItems = pgTable("sales_order_items", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   salesOrderId: uuid("sales_order_id").notNull().references(() => salesOrders.id, { onDelete: "cascade" }),
-  amazonListingId: uuid("amazon_listing_id").references(() => amazonListings.id, { onDelete: "set null" }),
   asin: varchar("asin").notNull(),
   sku: varchar("sku").notNull(),
-  productName: varchar("product_name").notNull(),
+  title: varchar("title").notNull(),
   quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("USD"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -135,13 +144,16 @@ export const salesOrderItems = pgTable("sales_order_items", {
 export const financialTransactions = pgTable("financial_transactions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   amazonAccountId: uuid("amazon_account_id").notNull().references(() => amazonAccounts.id, { onDelete: "cascade" }),
-  salesOrderItemId: uuid("sales_order_item_id").references(() => salesOrderItems.id, { onDelete: "set null" }),
-  transactionId: varchar("transaction_id").notNull(),
-  transactionType: varchar("transaction_type").notNull(), // commission, fulfillment, storage, advertising, etc.
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency").notNull().default("USD"),
-  description: text("description"),
+  transactionType: varchar("transaction_type").notNull(),
   transactionDate: timestamp("transaction_date").notNull(),
+  orderId: varchar("order_id"),
+  sku: varchar("sku"),
+  description: text("description").notNull(),
+  grossAmount: decimal("gross_amount", { precision: 10, scale: 2 }).notNull(),
+  feeAmount: decimal("fee_amount", { precision: 10, scale: 2 }).notNull(),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("USD"),
+  details: text("details"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -201,26 +213,17 @@ export const salesOrdersRelations = relations(salesOrders, ({ one, many }) => ({
   items: many(salesOrderItems),
 }));
 
-export const salesOrderItemsRelations = relations(salesOrderItems, ({ one, many }) => ({
+export const salesOrderItemsRelations = relations(salesOrderItems, ({ one }) => ({
   salesOrder: one(salesOrders, {
     fields: [salesOrderItems.salesOrderId],
     references: [salesOrders.id],
   }),
-  amazonListing: one(amazonListings, {
-    fields: [salesOrderItems.amazonListingId],
-    references: [amazonListings.id],
-  }),
-  financialTransactions: many(financialTransactions),
 }));
 
 export const financialTransactionsRelations = relations(financialTransactions, ({ one }) => ({
   amazonAccount: one(amazonAccounts, {
     fields: [financialTransactions.amazonAccountId],
     references: [amazonAccounts.id],
-  }),
-  salesOrderItem: one(salesOrderItems, {
-    fields: [financialTransactions.salesOrderItemId],
-    references: [salesOrderItems.id],
   }),
 }));
 

@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { syncScheduler } from "./syncScheduler";
 
 const app = express();
 app.use(express.json());
@@ -67,5 +68,10 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Initialize sync scheduler after server starts
+    syncScheduler.scheduleAllSyncs().catch(error => {
+      console.error('Failed to initialize sync scheduler:', error);
+    });
   });
 })();

@@ -34,6 +34,7 @@ export interface IStorage {
 
   // Amazon Account operations
   getAmazonAccounts(userId: string): Promise<AmazonAccount[]>;
+  getAmazonAccount(id: string): Promise<AmazonAccount | undefined>;
   createAmazonAccount(account: InsertAmazonAccount): Promise<AmazonAccount>;
   updateAmazonAccount(id: string, updates: Partial<InsertAmazonAccount>): Promise<AmazonAccount | undefined>;
   deleteAmazonAccount(id: string): Promise<boolean>;
@@ -64,6 +65,9 @@ export interface IStorage {
   // Financial operations
   getFinancialTransactions(amazonAccountId: string, startDate?: Date, endDate?: Date): Promise<FinancialTransaction[]>;
   createFinancialTransaction(transaction: InsertFinancialTransaction): Promise<FinancialTransaction>;
+
+  // Global operations
+  getAllConnectedAmazonAccounts(): Promise<AmazonAccount[]>;
 
   // Analytics operations
   getDashboardKPIs(userId: string, startDate?: Date, endDate?: Date): Promise<{
@@ -110,6 +114,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(amazonAccounts.createdAt));
   }
 
+  async getAmazonAccount(id: string): Promise<AmazonAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(amazonAccounts)
+      .where(eq(amazonAccounts.id, id));
+    return account;
+  }
+
   async createAmazonAccount(account: InsertAmazonAccount): Promise<AmazonAccount> {
     const [newAccount] = await db
       .insert(amazonAccounts)
@@ -131,7 +143,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(amazonAccounts)
       .where(eq(amazonAccounts.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Product operations
@@ -172,7 +184,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(products)
       .where(eq(products.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Amazon Listing operations
@@ -270,19 +282,20 @@ export class DatabaseStorage implements IStorage {
 
   // Sales operations
   async getSalesOrders(amazonAccountId: string, startDate?: Date, endDate?: Date): Promise<SalesOrder[]> {
-    let query = db
-      .select()
-      .from(salesOrders)
-      .where(eq(salesOrders.amazonAccountId, amazonAccountId));
-
+    const conditions = [eq(salesOrders.amazonAccountId, amazonAccountId)];
+    
     if (startDate) {
-      query = query.where(gte(salesOrders.orderDate, startDate));
+      conditions.push(gte(salesOrders.orderDate, startDate));
     }
     if (endDate) {
-      query = query.where(lte(salesOrders.orderDate, endDate));
+      conditions.push(lte(salesOrders.orderDate, endDate));
     }
 
-    return await query.orderBy(desc(salesOrders.orderDate));
+    return await db
+      .select()
+      .from(salesOrders)
+      .where(and(...conditions))
+      .orderBy(desc(salesOrders.orderDate));
   }
 
   async createSalesOrder(order: InsertSalesOrder): Promise<SalesOrder> {
@@ -310,19 +323,20 @@ export class DatabaseStorage implements IStorage {
 
   // Financial operations
   async getFinancialTransactions(amazonAccountId: string, startDate?: Date, endDate?: Date): Promise<FinancialTransaction[]> {
-    let query = db
-      .select()
-      .from(financialTransactions)
-      .where(eq(financialTransactions.amazonAccountId, amazonAccountId));
-
+    const conditions = [eq(financialTransactions.amazonAccountId, amazonAccountId)];
+    
     if (startDate) {
-      query = query.where(gte(financialTransactions.transactionDate, startDate));
+      conditions.push(gte(financialTransactions.transactionDate, startDate));
     }
     if (endDate) {
-      query = query.where(lte(financialTransactions.transactionDate, endDate));
+      conditions.push(lte(financialTransactions.transactionDate, endDate));
     }
 
-    return await query.orderBy(desc(financialTransactions.transactionDate));
+    return await db
+      .select()
+      .from(financialTransactions)
+      .where(and(...conditions))
+      .orderBy(desc(financialTransactions.transactionDate));
   }
 
   async createFinancialTransaction(transaction: InsertFinancialTransaction): Promise<FinancialTransaction> {
@@ -331,6 +345,15 @@ export class DatabaseStorage implements IStorage {
       .values(transaction)
       .returning();
     return newTransaction;
+  }
+
+  // Global operations
+  async getAllConnectedAmazonAccounts(): Promise<AmazonAccount[]> {
+    return await db
+      .select()
+      .from(amazonAccounts)
+      .where(eq(amazonAccounts.status, 'connected'))
+      .orderBy(desc(amazonAccounts.lastSyncAt));
   }
 
   // Analytics operations

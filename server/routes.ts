@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { registerAmazonRoutes } from "./routes/amazon";
 import { 
   insertAmazonAccountSchema,
   insertProductSchema,
@@ -25,70 +26,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Amazon Accounts routes
-  app.get("/api/amazon-accounts", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const accounts = await storage.getAmazonAccounts(userId);
-      res.json(accounts);
-    } catch (error) {
-      console.error("Error fetching Amazon accounts:", error);
-      res.status(500).json({ message: "Failed to fetch Amazon accounts" });
-    }
-  });
-
-  app.post("/api/amazon-accounts", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const accountData = insertAmazonAccountSchema.parse({
-        ...req.body,
-        userId,
-      });
-      
-      const account = await storage.createAmazonAccount(accountData);
-      res.status(201).json(account);
-    } catch (error) {
-      console.error("Error creating Amazon account:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid account data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: "Failed to create Amazon account" });
-      }
-    }
-  });
-
-  app.patch("/api/amazon-accounts/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      
-      const account = await storage.updateAmazonAccount(id, updates);
-      if (!account) {
-        return res.status(404).json({ message: "Amazon account not found" });
-      }
-      
-      res.json(account);
-    } catch (error) {
-      console.error("Error updating Amazon account:", error);
-      res.status(500).json({ message: "Failed to update Amazon account" });
-    }
-  });
-
-  app.delete("/api/amazon-accounts/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const success = await storage.deleteAmazonAccount(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: "Amazon account not found" });
-      }
-      
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting Amazon account:", error);
-      res.status(500).json({ message: "Failed to delete Amazon account" });
-    }
-  });
+  // Register Amazon routes
+  registerAmazonRoutes(app);
 
   // Products routes
   app.get("/api/products", isAuthenticated, async (req: any, res) => {
