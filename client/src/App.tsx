@@ -10,6 +10,7 @@ import Products from "@/pages/Products";
 import Costs from "@/pages/Costs";
 import Sales from "@/pages/Sales";
 import Reports from "@/pages/Reports";
+import Support from "@/pages/Support";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
 
   return (
     <Switch>
+      <Route path="/support" component={Support} />
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
