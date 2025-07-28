@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 import {
   Dialog,
@@ -61,6 +63,7 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
   const [isConnecting, setIsConnecting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAuthenticated, isLoading } = useAuth();
 
   const form = useForm<AmazonAccountFormData>({
     resolver: zodResolver(amazonAccountSchema),
@@ -97,6 +100,19 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
     },
     onError: (error: Error) => {
       console.error("Erro ao conectar conta:", error);
+      
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Login necessário",
+          description: "Você precisa fazer login primeiro. Redirecionando...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 1000);
+        return;
+      }
+      
       toast({
         title: "Erro na conexão",
         description: error.message || "Falha ao conectar com a Amazon. Verifique suas credenciais.",
@@ -129,12 +145,29 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
           </DialogDescription>
         </DialogHeader>
 
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            As credenciais SP-API já estão configuradas no sistema. Você só precisa fornecer as informações básicas da sua conta Amazon.
-          </AlertDescription>
-        </Alert>
+        {!isAuthenticated && !isLoading && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <strong>Login necessário:</strong> Você precisa fazer login para conectar contas Amazon.{" "}
+              <button 
+                onClick={() => window.location.href = "/api/login"}
+                className="underline font-medium hover:no-underline"
+              >
+                Clique aqui para fazer login
+              </button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isAuthenticated && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              As credenciais SP-API já estão configuradas no sistema. Você só precisa fornecer as informações básicas da sua conta Amazon.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -240,10 +273,12 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
               </Button>
               <Button 
                 type="submit" 
-                disabled={isConnecting}
-                className="bg-[#FF9900] hover:bg-[#FF9900]/90 text-white"
+                disabled={isConnecting || !isAuthenticated}
+                className="bg-[#FF9900] hover:bg-[#FF9900]/90 text-white disabled:opacity-50"
               >
-                {isConnecting ? "Conectando..." : "Conectar Conta"}
+                {isConnecting ? "Conectando..." : 
+                 !isAuthenticated ? "Login necessário" : 
+                 "Conectar Conta"}
               </Button>
             </div>
           </form>
