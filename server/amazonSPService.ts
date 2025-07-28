@@ -23,8 +23,11 @@ export class AmazonSPService {
   private spClients: Map<string, any> = new Map();
 
   private createClient(credentials: AmazonCredentials): any {
-    return new SellingPartnerAPI({
-      region: credentials.region,
+    // Map Brasil region to na (North America) as the library doesn't support br directly
+    const apiRegion = credentials.region === 'br' ? 'na' : credentials.region;
+    
+    return new SellingPartnerAPI.SellingPartner({
+      region: apiRegion,
       refresh_token: credentials.refresh_token,
       credentials: {
         SELLING_PARTNER_APP_CLIENT_ID: credentials.lwa_app_id,
@@ -357,11 +360,12 @@ export class AmazonSPService {
     // Default marketplace IDs by region
     const marketplaceMap = {
       'na': ['ATVPDKIKX0DER'], // US
-      'eu': ['A1PA6795UKMFR9'], // DE
-      'fe': ['A1VC38T7YXB528']  // JP
+      'eu': ['A1PA6795UKMFR9'], // DE  
+      'fe': ['A1VC38T7YXB528'], // JP
+      'br': ['A2Q3Y263D00KWC']  // BR
     };
 
-    return marketplaceMap[account.region as keyof typeof marketplaceMap] || marketplaceMap.na;
+    return marketplaceMap[account.region as keyof typeof marketplaceMap] || [account.marketplaceId];
   }
 
   // Method to validate Amazon credentials
