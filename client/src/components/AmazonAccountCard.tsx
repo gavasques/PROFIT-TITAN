@@ -249,6 +249,28 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
                   <Settings className="w-4 h-4 mr-2" />
                   Testar Conexão
                 </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={async () => {
+                    try {
+                      const response = await apiRequest("POST", `/api/amazon-accounts/${account.id}/test-auth`);
+                      console.log('Auth test result:', response);
+                      toast({
+                        title: "Teste de Autenticação",
+                        description: response.message || "Teste concluído"
+                      });
+                    } catch (error) {
+                      console.error('Auth test error:', error);
+                      toast({
+                        title: "Erro no teste de autenticação",
+                        description: error instanceof Error ? error.message : "Erro desconhecido",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Testar Autenticação
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => syncProductsMutation.mutate()}>
                   <Package className="w-4 h-4 mr-2" />

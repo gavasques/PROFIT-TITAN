@@ -59,6 +59,81 @@ export function registerAmazonRoutes(app: Express) {
     }
   });
 
+  // Test Amazon SP-API authentication
+  app.post('/api/amazon-accounts/:id/test-auth', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const account = await storage.getAmazonAccount(id);
+      
+      if (!account || account.userId !== userId) {
+        return res.status(404).json({ message: "Amazon account not found" });
+      }
+      
+      console.log('Testing Amazon SP-API authentication for account:', account.accountName);
+      
+      // Test getting access token
+      const tokenUrl = 'https://api.amazon.com/auth/o2/token';
+      
+      const tokenBody = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: account.refreshToken,
+        client_id: account.lwaAppId,
+        client_secret: account.lwaClientSecret
+      });
+      
+      console.log('Testing token endpoint:', tokenUrl);
+      console.log('Using client ID:', account.lwaAppId);
+      
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'ProfitHub/1.0'
+        },
+        body: tokenBody
+      });
+      
+      const responseText = await response.text();
+      console.log('Token response status:', response.status);
+      console.log('Token response headers:', response.headers);
+      
+      if (!response.ok) {
+        console.error('Token request failed:', response.status);
+        console.error('Response body:', responseText.substring(0, 500));
+        return res.status(400).json({ 
+          message: 'Authentication failed',
+          status: response.status,
+          error: responseText.substring(0, 200)
+        });
+      }
+      
+      try {
+        const tokenData = JSON.parse(responseText);
+        res.json({ 
+          message: 'Authentication successful',
+          hasAccessToken: !!tokenData.access_token,
+          tokenType: tokenData.token_type,
+          expiresIn: tokenData.expires_in
+        });
+      } catch (parseError) {
+        console.error('Failed to parse token response:', parseError);
+        res.status(500).json({ 
+          message: 'Invalid token response',
+          responsePreview: responseText.substring(0, 100)
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error testing authentication:", error);
+      res.status(500).json({ 
+        message: "Failed to test authentication",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Test Amazon account connection
   app.post('/api/amazon-accounts/:id/test-connection', isAuthenticated, async (req: any, res) => {
     try {
