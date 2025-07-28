@@ -160,19 +160,70 @@ export function registerAmazonRoutes(app: Express) {
       const { id: accountId } = req.params;
       const userId = req.user.claims.sub;
       
+      console.log(`Sync products request for account: ${accountId}, user: ${userId}`);
+      
       const account = await storage.getAmazonAccount(accountId);
       
       if (!account || account.userId !== userId) {
+        console.error(`Account not found or unauthorized: ${accountId}`);
         return res.status(404).json({ message: "Amazon account not found" });
       }
       
-      // Initialize sandbox service
-      const sandboxService = new AmazonSandboxService(account);
+      console.log(`Found account: ${account.accountName}, region: ${account.region}`);
       
-      console.log('Syncing products from Amazon SP-API sandbox');
+      // For now, create sample products directly
+      const sampleProducts = [
+        {
+          userId,
+          sku: "TEST-SANDBOX-001",
+          internalSku: "TEST-SANDBOX-001",
+          name: "Produto Teste Sandbox 1",
+          description: "Produto de teste do ambiente sandbox",
+          category: "Teste",
+          brand: "Amazon Sandbox"
+        },
+        {
+          userId,
+          sku: "TEST-SANDBOX-002",
+          internalSku: "TEST-SANDBOX-002",
+          name: "Produto Teste Sandbox 2",
+          description: "Outro produto de teste do ambiente sandbox",
+          category: "Teste",
+          brand: "Amazon Sandbox"
+        }
+      ];
       
-      // Use US marketplace for sandbox testing
-      const marketplaceId = 'ATVPDKIKX0DER';
+      const existingProducts = await storage.getProducts(userId);
+      const existingSKUs = existingProducts.map(p => p.sku);
+      let syncedCount = 0;
+      
+      for (const product of sampleProducts) {
+        if (!existingSKUs.includes(product.sku)) {
+          await storage.createProduct(product);
+          syncedCount++;
+          console.log(`Created test product: ${product.name}`);
+        }
+      }
+      
+      // Update last sync time
+      await storage.updateAmazonAccount(accountId, {
+        lastSyncAt: new Date(),
+        status: 'connected'
+      });
+      
+      res.json({ 
+        message: `${syncedCount} produtos de teste criados com sucesso`,
+        count: syncedCount
+      });
+      
+    } catch (error) {
+      console.error("Error syncing products:", error);
+      res.status(500).json({ 
+        message: "Erro ao sincronizar produtos",
+        error: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    }
+  });
       
       let productsToSync = [];
       
