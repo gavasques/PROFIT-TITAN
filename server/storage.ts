@@ -7,6 +7,7 @@ import {
   salesOrders,
   salesOrderItems,
   financialTransactions,
+  passwordResetTokens,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -24,6 +25,8 @@ import {
   type InsertSalesOrderItem,
   type FinancialTransaction,
   type InsertFinancialTransaction,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, isNull, or } from "drizzle-orm";
@@ -35,7 +38,14 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   upsertUser(user: UpsertUser): Promise<User>;
+
+  // Password reset operations
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  getPasswordResetTokenByCode(code: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(id: string): Promise<void>;
 
   // Amazon Account operations
   getAmazonAccounts(userId: string): Promise<AmazonAccount[]>;
@@ -117,6 +127,45 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ password: hashedPassword, updatedAt: new Date() })
+      .where(eq(users.id, id));
+  }
+
+  // Password reset operations
+  async createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [newToken] = await db
+      .insert(passwordResetTokens)
+      .values(token)
+      .returning();
+    return newToken;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token));
+    return resetToken;
+  }
+
+  async getPasswordResetTokenByCode(code: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.code, code));
+    return resetToken;
+  }
+
+  async markPasswordResetTokenUsed(id: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ isUsed: true })
+      .where(eq(passwordResetTokens.id, id));
   }
 
   async upsertUser(user: UpsertUser): Promise<User> {

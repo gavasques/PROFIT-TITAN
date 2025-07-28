@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage';
 import { hashPassword, comparePassword, generateToken, authenticateToken } from '../auth';
-import { loginSchema, registerSchema } from '../../shared/schema';
+import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } from '../../shared/schema';
+import { emailService } from '../emailService';
+import { randomBytes } from 'crypto';
 
 const router = Router();
 
@@ -132,7 +134,7 @@ router.get('/user', async (req, res) => {
     res.json(userWithoutPassword);
   } catch (error) {
     console.error('Get user error:', error);
-    if (error.name === 'JsonWebTokenError') {
+    if ((error as any).name === 'JsonWebTokenError') {
       return res.status(401).json({ message: 'Invalid token' });
     }
     res.status(500).json({ message: 'Erro interno do servidor' });
@@ -156,7 +158,104 @@ router.post('/logout', async (req, res) => {
   }
 });
 
-// Administrative route to change user password
+// Forgot password - send reset code
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const validatedData = forgotPasswordSchema.parse(req.body);
+    
+    // Check if user exists
+    const user = await storage.getUserByEmail(validatedData.email);
+    if (!user) {
+      // For security, don't reveal if email exists or not
+      return res.json({ message: 'Se o email existir no sistema, você receberá um código de recuperação' });
+    }
+
+    // Generate reset token and 6-digit code
+    const resetToken = randomBytes(32).toString('hex');
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Save reset token in database
+    await storage.createPasswordResetToken({
+      userId: user.id,
+      token: resetToken,
+      code: resetCode,
+      expiresAt,
+      isUsed: false,
+    });
+
+    // Send email with reset code
+    await emailService.sendPasswordResetEmail(user.email, resetCode);
+
+    res.json({ 
+      message: 'Código de recuperação enviado para seu email',
+      token: resetToken // Return token for the reset form
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        message: 'Dados inválidos', 
+        errors: error.errors 
+      });
+    }
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Erro ao processar solicitação' });
+  }
+});
+
+// Reset password with code
+router.post('/reset-password', async (req, res) => {
+  try {
+    const validatedData = resetPasswordSchema.parse(req.body);
+    
+    // Find reset token
+    const resetToken = await storage.getPasswordResetToken(validatedData.token);
+    if (!resetToken) {
+      return res.status(400).json({ message: 'Token de recuperação inválido' });
+    }
+
+    // Check if token is expired
+    if (new Date() > resetToken.expiresAt) {
+      return res.status(400).json({ message: 'Código de recuperação expirado' });
+    }
+
+    // Check if token is already used
+    if (resetToken.isUsed) {
+      return res.status(400).json({ message: 'Código de recuperação já foi utilizado' });
+    }
+
+    // Verify code
+    if (resetToken.code !== validatedData.code) {
+      return res.status(400).json({ message: 'Código de recuperação inválido' });
+    }
+
+    // Get user and update password
+    const user = await storage.getUser(resetToken.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    // Hash new password and update
+    const hashedPassword = await hashPassword(validatedData.password);
+    await storage.updateUserPassword(user.id, hashedPassword);
+
+    // Mark token as used
+    await storage.markPasswordResetTokenUsed(resetToken.id);
+
+    res.json({ message: 'Senha alterada com sucesso' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        message: 'Dados inválidos', 
+        errors: error.errors 
+      });
+    }
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Erro ao alterar senha' });
+  }
+});
+
+// Administrative route to change user password (now creates user for guilherme@profithub.com)
 router.post('/admin/change-password', async (req, res) => {
   try {
     const { email, newPassword } = req.body;
@@ -171,7 +270,7 @@ router.post('/admin/change-password', async (req, res) => {
     if (!user) {
       // Create user if doesn't exist
       const hashedPassword = await hashPassword(newPassword);
-      const [firstName, lastName] = email.split('@')[0].split('.').map(name => 
+      const [firstName, lastName] = email.split('@')[0].split('.').map((name: string) => 
         name.charAt(0).toUpperCase() + name.slice(1)
       );
       

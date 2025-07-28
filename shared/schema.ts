@@ -38,6 +38,17 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Password Reset Tokens
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token").notNull().unique(),
+  code: varchar("code", { length: 6 }).notNull(), // 6-digit verification code
+  expiresAt: timestamp("expires_at").notNull(),
+  isUsed: boolean("is_used").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Amazon Seller Accounts
 export const amazonAccounts = pgTable("amazon_accounts", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -232,6 +243,7 @@ export const financialTransactionsRelations = relations(financialTransactions, (
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({ id: true, createdAt: true });
 export const insertAmazonAccountSchema = createInsertSchema(amazonAccounts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAmazonListingSchema = createInsertSchema(amazonListings).omit({ id: true, createdAt: true, updatedAt: true });
@@ -244,6 +256,8 @@ export const insertFinancialTransactionSchema = createInsertSchema(financialTran
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UpsertUser = typeof users.$inferInsert;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 
 // Auth schemas for validation
 export const loginSchema = z.object({
@@ -258,8 +272,20 @@ export const registerSchema = z.object({
   lastName: z.string().min(1, "Sobrenome é obrigatório"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Email inválido"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token é obrigatório"),
+  code: z.string().length(6, "Código deve ter 6 dígitos"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+});
+
 export type LoginData = z.infer<typeof loginSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
+export type ForgotPasswordData = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
 export type InsertAmazonAccount = z.infer<typeof insertAmazonAccountSchema>;
 export type AmazonAccount = typeof amazonAccounts.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
