@@ -1,237 +1,185 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Mail, 
-  MessageCircle, 
-  HelpCircle, 
-  BookOpen, 
-  ExternalLink,
-  Clock,
-  CheckCircle,
-  TrendingUp
-} from "lucide-react";
+import { CheckCircle, AlertCircle, Mail, ExternalLink, HelpCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Support() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <TrendingUp className="text-white" size={20} />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">ProfitHub</h1>
-              <p className="text-sm text-gray-500">Sistema de Gestão Multi-Marketplace</p>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="container mx-auto p-6 max-w-4xl">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Central de Suporte</h1>
+        <p className="text-muted-foreground">
+          Ajuda e recursos para resolver problemas comuns do ProfitHub
+        </p>
+      </div>
 
-      <main className="max-w-4xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Central de Suporte</h1>
-          <p className="text-gray-600">
-            Encontre ajuda, documentação e entre em contato conosco para resolver suas dúvidas sobre o ProfitHub.
-          </p>
-        </div>
-
-        {/* Contact Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Email de Suporte</CardTitle>
-                  <CardDescription>Resposta em até 24 horas</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
-                Para dúvidas técnicas, problemas de integração ou questões sobre funcionalidades.
-              </p>
-              <Button 
-                className="w-full" 
-                onClick={() => window.open('mailto:suporte@guivasques.app', '_blank')}
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                suporte@guivasques.app
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <MessageCircle className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Chat Ao Vivo</CardTitle>
-                  <CardDescription>Horário comercial</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
-                Disponível de segunda a sexta, das 9h às 18h (horário de Brasília).
-              </p>
-              <Button variant="outline" className="w-full" disabled>
-                <Clock className="w-4 h-4 mr-2" />
-                Em breve
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Status */}
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Status do Sistema</CardTitle>
-                  <CardDescription>Todos os serviços operacionais</CardDescription>
-                </div>
-              </div>
-              <Badge className="bg-green-100 text-green-800">
-                Operacional
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium">API Amazon SP-API</span>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">Online</Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium">Sincronização</span>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">Online</Badge>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium">Dashboard</span>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">Online</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* FAQ */}
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <HelpCircle className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Perguntas Frequentes</CardTitle>
-                <CardDescription>Dúvidas mais comuns sobre o ProfitHub</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Como conectar minha conta Amazon?</h4>
-              <p className="text-sm text-gray-600 mb-2">
-                Vá para "Conectar Conta Amazon", insira suas credenciais e autorize o acesso via OAuth. 
-                É necessário ter as permissões adequadas no Seller Central.
-              </p>
-            </div>
-            
-            <Separator />
-            
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Por que meus dados não estão sincronizando?</h4>
-              <p className="text-sm text-gray-600 mb-2">
-                Verifique se sua conta Amazon está autorizada e se as credenciais estão válidas. 
-                Entre em contato conosco se o problema persistir.
-              </p>
-            </div>
-            
-            <Separator />
-            
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Como cadastrar custos de produtos?</h4>
-              <p className="text-sm text-gray-600 mb-2">
-                Acesse a seção "Custos", selecione o produto e adicione o custo com data de vigência. 
-                O sistema mantém histórico completo de alterações.
-              </p>
-            </div>
-
-            <Separator />
-            
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Posso usar múltiplas contas Amazon?</h4>
-              <p className="text-sm text-gray-600 mb-2">
-                Sim, o ProfitHub suporta múltiplas contas Amazon com gestão centralizada 
-                e relatórios consolidados.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Documentation */}
+      <div className="grid gap-6">
+        {/* Status do Sistema */}
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Documentação</CardTitle>
-                <CardDescription>Guias e tutoriais detalhados</CardDescription>
-              </div>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              Status do Sistema
+            </CardTitle>
+            <CardDescription>
+              Status atual das integrações e serviços
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="text-left">
-                  <div className="font-semibold mb-1">Guia de Início Rápido</div>
-                  <div className="text-sm text-gray-600">Configure sua primeira conta em 5 minutos</div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="font-medium">Amazon SP-API</span>
                 </div>
-                <ExternalLink className="w-4 h-4 ml-auto" />
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                  Operacional
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="font-medium">OAuth Authorization</span>
+                </div>
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                  Funcionando
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="font-medium">Sincronização de Dados</span>
+                </div>
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                  Ativa
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Problemas Comuns */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5 text-blue-500" />
+              Problemas Comuns e Soluções
+            </CardTitle>
+            <CardDescription>
+              Soluções para os problemas mais frequentes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="border-l-4 border-red-500 pl-4">
+                <h3 className="font-semibold text-red-900 dark:text-red-100">
+                  Erro "Client authentication failed"
+                </h3>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  <strong>Causa:</strong> Credenciais LWA não correspondem ao Security Profile que gerou o refresh token.
+                </p>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  <strong>Solução:</strong> Verificar se Client ID e Client Secret são do mesmo Security Profile.
+                </p>
+              </div>
+
+              <div className="border-l-4 border-yellow-500 pl-4">
+                <h3 className="font-semibold text-yellow-900 dark:text-yellow-100">
+                  OAuth retorna erro MD1000
+                </h3>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                  <strong>Causa:</strong> Aplicação em estado "draft" requer parâmetro version=beta.
+                </p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                  <strong>Solução:</strong> URL OAuth automaticamente corrigida no sistema.
+                </p>
+              </div>
+
+              <div className="border-l-4 border-blue-500 pl-4">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                  Dados não aparecem no dashboard
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  <strong>Causa:</strong> Sincronização ainda em processo ou conta não autorizada.
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  <strong>Solução:</strong> Aguardar sincronização completa ou reconectar conta Amazon.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recursos Úteis */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recursos Úteis</CardTitle>
+            <CardDescription>
+              Links e documentações importantes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3">
+              <Button variant="outline" className="justify-start" asChild>
+                <a href="/lwa-setup" className="flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Guia de Configuração LWA
+                </a>
               </Button>
-              
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="text-left">
-                  <div className="font-semibold mb-1">Integração Amazon SP-API</div>
-                  <div className="text-sm text-gray-600">Como conectar e autorizar sua conta</div>
-                </div>
-                <ExternalLink className="w-4 h-4 ml-auto" />
+              <Button variant="outline" className="justify-start" asChild>
+                <a href="/oauth-diagnostic" className="flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Diagnóstico OAuth
+                </a>
               </Button>
-              
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="text-left">
-                  <div className="font-semibold mb-1">Gestão de Custos</div>
-                  <div className="text-sm text-gray-600">Controle histórico e versionamento</div>
-                </div>
-                <ExternalLink className="w-4 h-4 ml-auto" />
-              </Button>
-              
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="text-left">
-                  <div className="font-semibold mb-1">Relatórios Financeiros</div>
-                  <div className="text-sm text-gray-600">Análise de lucratividade e KPIs</div>
-                </div>
-                <ExternalLink className="w-4 h-4 ml-auto" />
+              <Button variant="outline" className="justify-start" asChild>
+                <a href="https://developer-docs.amazon.com/sp-api/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Documentação Amazon SP-API
+                </a>
               </Button>
             </div>
           </CardContent>
         </Card>
-      </main>
+
+        {/* Contato */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-500" />
+              Precisa de Ajuda?
+            </CardTitle>
+            <CardDescription>
+              Entre em contato conosco para suporte personalizado
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                <Mail className="h-5 w-5 text-blue-500" />
+                <div>
+                  <p className="font-medium">Email de Suporte</p>
+                  <a 
+                    href="mailto:suporte@guivasques.app" 
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    suporte@guivasques.app
+                  </a>
+                </div>
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  <strong>Tempo de resposta:</strong> Até 24 horas durante dias úteis
+                </p>
+                <p className="mt-1">
+                  <strong>Inclua sempre:</strong> Descrição detalhada do problema, prints de tela se possível, e horário do ocorrido
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
