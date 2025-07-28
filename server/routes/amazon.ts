@@ -39,8 +39,22 @@ export function registerAmazonRoutes(app: Express) {
       // Validate the data
       const validatedData = insertAmazonAccountSchema.parse(accountData);
 
-      // Skip credential validation for now - will be tested when sync runs
-      console.log('Account creation - skipping credential validation for initial setup');
+      // Test the connection before saving (sandbox mode)
+      const isValid = await amazonSPService.validateCredentials({
+        refresh_token: validatedData.refreshToken,
+        lwa_app_id: validatedData.lwaAppId,
+        lwa_client_secret: validatedData.lwaClientSecret,
+        aws_access_key: validatedData.awsAccessKey,
+        aws_secret_key: validatedData.awsSecretKey,
+        aws_role: validatedData.awsRole,
+        region: validatedData.region as 'na' | 'eu' | 'fe' | 'br'
+      });
+
+      if (!isValid) {
+        return res.status(400).json({ 
+          message: "Invalid Amazon SP-API sandbox credentials. Please check your sandbox credentials and try again." 
+        });
+      }
 
       // Save account with connected status
       const account = await storage.createAmazonAccount({

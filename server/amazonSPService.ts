@@ -35,7 +35,8 @@ export class AmazonSPService {
         AWS_ACCESS_KEY_ID: credentials.aws_access_key,
         AWS_SECRET_ACCESS_KEY: credentials.aws_secret_key,
         AWS_SELLING_PARTNER_ROLE: credentials.aws_role
-      }
+      },
+      sandbox: true // Enable sandbox mode for testing
     });
   }
 

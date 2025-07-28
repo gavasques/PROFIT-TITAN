@@ -164,7 +164,7 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Credenciais temporárias:</strong> O sistema criará a conta com credenciais de desenvolvimento. Você precisará fornecer credenciais SP-API válidas posteriormente para sincronização completa.
+              <strong>Modo Sandbox:</strong> O sistema está configurado para usar o ambiente de sandbox da Amazon SP-API para testes. Use suas credenciais sandbox válidas para conectar.
             </AlertDescription>
           </Alert>
         )}
