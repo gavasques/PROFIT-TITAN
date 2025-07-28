@@ -42,12 +42,12 @@ const amazonAccountSchema = z.object({
   region: z.enum(["na", "eu", "fe"], {
     errorMap: () => ({ message: "Selecione uma região válida" })
   }),
-  refreshToken: z.string().min(1, "Refresh Token é obrigatório"),
-  lwaAppId: z.string().min(1, "LWA App ID é obrigatório"),
-  lwaClientSecret: z.string().min(1, "LWA Client Secret é obrigatório"),
-  awsAccessKey: z.string().min(1, "AWS Access Key é obrigatório"),
-  awsSecretKey: z.string().min(1, "AWS Secret Key é obrigatório"),
-  awsRole: z.string().min(1, "AWS Role ARN é obrigatório"),
+  refreshToken: z.string().optional(),
+  lwaAppId: z.string().optional(),
+  lwaClientSecret: z.string().optional(),
+  awsAccessKey: z.string().optional(),
+  awsSecretKey: z.string().optional(),
+  awsRole: z.string().optional(),
 });
 
 type AmazonAccountFormData = z.infer<typeof amazonAccountSchema>;
@@ -81,6 +81,8 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
   const createAccountMutation = useMutation({
     mutationFn: async (data: AmazonAccountFormData) => {
       setIsConnecting(true);
+      // Use form data directly - credentials are pre-configured in environment
+      
       return await apiRequest("/api/amazon-accounts", {
         method: "POST",
         body: JSON.stringify(data),
@@ -131,16 +133,7 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Você precisa ter uma conta de desenvolvedor Amazon SP-API ativa. 
-            <a 
-              href="https://developer-docs.amazon.com/sp-api/docs/sp-api-registration-overview" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center ml-1 text-blue-600 hover:underline"
-            >
-              Saiba mais
-              <ExternalLink className="ml-1 h-3 w-3" />
-            </a>
+            As credenciais SP-API já estão configuradas no sistema. Você só precisa fornecer as informações básicas da sua conta Amazon.
           </AlertDescription>
         </Alert>
 
@@ -229,111 +222,13 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
               />
             </div>
 
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Credenciais SP-API</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="lwaAppId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>LWA App ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="amzn1.sp.solution..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="lwaClientSecret"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>LWA Client Secret</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="refreshToken"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Refresh Token</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Atzr|IwEB..." 
-                        className="min-h-[80px]" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Token de refresh obtido na autorização OAuth
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Credenciais AWS</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="awsAccessKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>AWS Access Key</FormLabel>
-                      <FormControl>
-                        <Input placeholder="AKIAIOSFODNN7EXAMPLE" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="awsSecretKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>AWS Secret Key</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="awsRole"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>AWS Role ARN</FormLabel>
-                    <FormControl>
-                      <Input placeholder="arn:aws:iam::123456789:role/SellingPartnerAPIRole" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      ARN da role IAM configurada para SP-API
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <Alert className="my-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Credenciais já configuradas:</strong> As credenciais SP-API e AWS já estão configuradas no sistema. 
+                Você só precisa fornecer as informações específicas da sua conta Amazon acima.
+              </AlertDescription>
+            </Alert>
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button

@@ -21,10 +21,19 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Use environment variables for SP-API credentials
       const accountData = {
         ...req.body,
         userId,
-        status: 'pending'
+        status: 'pending',
+        // Override with environment credentials if available
+        refreshToken: process.env.AMAZON_REFRESH_TOKEN || req.body.refreshToken,
+        lwaAppId: process.env.AMAZON_LWA_APP_ID || req.body.lwaAppId,
+        lwaClientSecret: process.env.AMAZON_LWA_CLIENT_SECRET || req.body.lwaClientSecret,
+        awsAccessKey: process.env.AMAZON_AWS_ACCESS_KEY || req.body.awsAccessKey,
+        awsSecretKey: process.env.AMAZON_AWS_SECRET_KEY || req.body.awsSecretKey,
+        awsRole: process.env.AMAZON_AWS_ROLE_ARN || req.body.awsRole,
       };
 
       // Validate the data
