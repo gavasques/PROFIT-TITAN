@@ -94,37 +94,11 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user (protected route)
-router.get('/user', async (req, res) => {
+router.get('/user', authenticateToken, async (req, res) => {
   try {
-    // In development mode with SKIP_AUTH, return mock user without token validation
-    if (process.env.SKIP_AUTH === 'true') {
-      const mockUser = {
-        id: 'dev-user-123',
-        email: 'dev@local.dev',
-        firstName: 'Developer',
-        lastName: 'Local',
-        profileImageUrl: null,
-        isEmailVerified: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return res.json(mockUser);
-    }
-    
-    // In production, use token authentication
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) {
-      return res.status(401).json({ message: 'Access token required' });
-    }
-
-    // Verify token and get user  
-    const { verifyToken } = await import('../auth.js');
-    const decoded = verifyToken(token);
-    const { userId } = decoded as any;
-    
+    const userId = getUserId(req);
     const user = await storage.getUser(userId);
+    
     if (!user) {
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
@@ -134,9 +108,6 @@ router.get('/user', async (req, res) => {
     res.json(userWithoutPassword);
   } catch (error) {
     console.error('Get user error:', error);
-    if ((error as any).name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 });
@@ -144,13 +115,7 @@ router.get('/user', async (req, res) => {
 // Logout user (clear session/token)
 router.post('/logout', async (req, res) => {
   try {
-    // In development mode with SKIP_AUTH, just return success
-    if (process.env.SKIP_AUTH === 'true') {
-      return res.json({ message: 'Logout realizado com sucesso' });
-    }
-    
-    // In production, the token is managed client-side (JWT)
-    // So we just return success - the client will remove the token
+    // JWT tokens are managed client-side, so just return success
     res.json({ message: 'Logout realizado com sucesso' });
   } catch (error) {
     console.error('Logout error:', error);

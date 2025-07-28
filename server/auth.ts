@@ -31,15 +31,6 @@ export const verifyToken = (token: string): JWTPayload => {
 };
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  // In SKIP_AUTH mode, use session-based authentication (from Replit Auth)
-  if (process.env.SKIP_AUTH === 'true') {
-    if ((req as any).user && (req as any).user.id) {
-      return next();
-    }
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-
-  // Production mode - use JWT authentication
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
