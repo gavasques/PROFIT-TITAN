@@ -24,6 +24,7 @@ export function useAuth() {
       }
     },
     retry: false,
+    enabled: !!token, // Only run query if token exists
   });
 
   const logout = async () => {
@@ -46,7 +47,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading,
+    isLoading: token ? isLoading : false, // Don't show loading if no token
     isAuthenticated: !!user,
     logout,
     error,
