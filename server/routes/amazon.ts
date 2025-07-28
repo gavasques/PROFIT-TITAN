@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { isAuthenticated } from "../replitAuth";
+import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
 import { amazonSPService } from "../amazonSPService";
 import { AmazonSandboxService } from "../amazonSandboxService";
@@ -63,7 +63,14 @@ export function registerAmazonRoutes(app: Express) {
       res.json(account);
     } catch (error) {
       console.error("Error creating Amazon account:", error);
-      res.status(500).json({ message: "Failed to create Amazon account" });
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+      res.status(500).json({ 
+        message: "Failed to create Amazon account",
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 

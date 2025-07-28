@@ -1,8 +1,12 @@
+// Load environment variables first
+import dotenv from 'dotenv';
+dotenv.config();
+
 // Environment variables - set development defaults
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
-process.env.SKIP_AUTH = process.env.SKIP_AUTH || 'true';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_not_for_production';
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'dev_session_secret_not_for_production';
+// Note: SKIP_AUTH should only be set explicitly in .env for debugging, not default to true
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
