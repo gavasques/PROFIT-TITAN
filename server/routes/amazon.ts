@@ -4,12 +4,17 @@ import { storage } from "../storage";
 import { amazonSPService } from "../amazonSPService";
 import { AmazonSandboxService } from "../amazonSandboxService";
 import { insertAmazonAccountSchema } from "@shared/schema";
+import { getUserId } from "../authUtils";
 
 export function registerAmazonRoutes(app: Express) {
   // Get all Amazon accounts for user
   app.get('/api/amazon-accounts', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const accounts = await storage.getAmazonAccounts(userId);
       res.json(accounts);
     } catch (error) {
@@ -21,7 +26,10 @@ export function registerAmazonRoutes(app: Express) {
   // Create new Amazon account
   app.post('/api/amazon-accounts', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // Use environment variables for SP-API credentials
       const accountData = {
@@ -63,7 +71,10 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/test-auth', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       const account = await storage.getAmazonAccount(id);
       
@@ -138,7 +149,10 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/test-connection', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // Verify user owns the Amazon account
       const account = await storage.getAmazonAccount(id);
@@ -172,7 +186,10 @@ export function registerAmazonRoutes(app: Express) {
     
     try {
       const { id: accountId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       console.log(`🚀 [SYNC START] Account: ${accountId}, User: ${userId}, Time: ${new Date().toISOString()}`);
       
@@ -227,7 +244,10 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/sync-orders', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // Verify user owns the Amazon account
       const account = await storage.getAmazonAccount(id);
@@ -252,7 +272,10 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/sync-financial', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // Verify user owns the Amazon account
       const account = await storage.getAmazonAccount(id);
@@ -276,7 +299,10 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/sync-all', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // Verify user owns the Amazon account
       const account = await storage.getAmazonAccount(id);
@@ -315,7 +341,10 @@ export function registerAmazonRoutes(app: Express) {
   app.put('/api/amazon-accounts/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       const updates = req.body;
       
       // Verify user owns the Amazon account
@@ -341,7 +370,10 @@ export function registerAmazonRoutes(app: Express) {
   app.delete('/api/amazon-accounts/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // Verify user owns the Amazon account
       const existingAccount = await storage.getAmazonAccount(id);
@@ -366,7 +398,10 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/test-simple', isAuthenticated, async (req: any, res) => {
     try {
       const { id: accountId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       console.log(`🧪 [SIMPLE TEST] Account: ${accountId}, User: ${userId}`);
       
@@ -414,7 +449,10 @@ export function registerAmazonRoutes(app: Express) {
   app.get('/api/amazon-accounts/:id/debug', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       const account = await storage.getAmazonAccount(id);
       if (!account || account.userId !== userId) {

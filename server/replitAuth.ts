@@ -67,6 +67,61 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
+  // 🔧 Development mode - skip Replit Auth if SKIP_AUTH is enabled
+  if (process.env.SKIP_AUTH === 'true') {
+    console.log('🔧 SKIP_AUTH enabled - setting up mock authentication for local development');
+    
+    app.set("trust proxy", 1);
+    app.use(getSession());
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+    // Mock user for development
+    const mockUser = {
+      id: 'dev-user-123',
+      email: 'dev@local.dev',
+      firstName: 'Developer',
+      lastName: 'Local',
+      profileImageUrl: null,
+      claims: { sub: 'dev-user-123', email: 'dev@local.dev', exp: Math.floor(Date.now() / 1000) + 3600 },
+      access_token: 'dev-token',
+      refresh_token: 'dev-refresh-token',
+      expires_at: Math.floor(Date.now() / 1000) + 3600
+    };
+
+    // Ensure dev user exists in database
+    await storage.upsertUser({
+      id: mockUser.id,
+      email: mockUser.email,
+      firstName: mockUser.firstName,
+      lastName: mockUser.lastName,
+      profileImageUrl: mockUser.profileImageUrl,
+    });
+
+    passport.serializeUser((user: Express.User, cb) => cb(null, user));
+    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+
+    // Mock login endpoint - auto-login with dev user
+    app.get("/api/login", (req, res) => {
+      req.login(mockUser, (err) => {
+        if (err) return res.status(500).json({ error: 'Login failed' });
+        res.redirect("/");
+      });
+    });
+
+    app.get("/api/callback", (req, res) => {
+      res.redirect("/");
+    });
+
+    app.get("/api/logout", (req, res) => {
+      req.logout(() => {
+        res.redirect("/");
+      });
+    });
+
+    return;
+  }
+
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
@@ -128,6 +183,11 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // 🔧 Development mode - bypass authentication if SKIP_AUTH is enabled
+  if (process.env.SKIP_AUTH === 'true') {
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

@@ -26,6 +26,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, isNull, or } from "drizzle-orm";
+import { mockDb } from "./mockDb";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -447,4 +448,109 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Mock storage for development
+class MockStorage implements IStorage {
+  // User operations
+  async getUser(id: string): Promise<User | undefined> {
+    const user = mockDb['users'].find((u: any) => u.id === id);
+    return user;
+  }
+
+  async upsertUser(user: UpsertUser): Promise<User> {
+    return await mockDb.upsertUser(user);
+  }
+
+  // Amazon Account operations
+  async getAmazonAccounts(userId: string): Promise<AmazonAccount[]> {
+    return await mockDb.getAmazonAccountsByUserId(userId);
+  }
+
+  async getAmazonAccount(id: string): Promise<AmazonAccount | undefined> {
+    return await mockDb.getAmazonAccountById(id);
+  }
+
+  async createAmazonAccount(account: InsertAmazonAccount): Promise<AmazonAccount> {
+    const newAccount = { id: `mock-${Date.now()}`, ...account, createdAt: new Date(), updatedAt: new Date() };
+    mockDb['amazonAccounts'].push(newAccount);
+    return newAccount;
+  }
+
+  async updateAmazonAccount(id: string, updates: Partial<InsertAmazonAccount>): Promise<AmazonAccount | undefined> {
+    return await mockDb.updateAmazonAccount(id, updates);
+  }
+
+  async deleteAmazonAccount(id: string): Promise<boolean> {
+    const index = mockDb['amazonAccounts'].findIndex((acc: any) => acc.id === id);
+    if (index >= 0) {
+      mockDb['amazonAccounts'].splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  // Amazon Listing operations  
+  async getAmazonListings(accountId: string): Promise<AmazonListing[]> {
+    return await mockDb.getAmazonListingsByAccountId(accountId);
+  }
+
+  async upsertAmazonListing(listing: InsertAmazonListing): Promise<AmazonListing> {
+    return await mockDb.upsertAmazonListing(listing);
+  }
+
+  // For simplicity, implementing minimal required methods for Amazon sync
+  async getProducts(userId: string): Promise<Product[]> { return []; }
+  async getProductsByUserId(userId: string): Promise<Product[]> { return []; }
+  async getProductBySku(sku: string, userId: string): Promise<Product | undefined> { return undefined; }
+  async getProduct(id: string): Promise<Product | undefined> { return undefined; }
+  async createProduct(product: InsertProduct): Promise<Product> { 
+    throw new Error('Not implemented in mock'); 
+  }
+  async updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product | undefined> { 
+    return undefined; 
+  }
+  async deleteProduct(id: string): Promise<boolean> { return false; }
+
+  async getProductCosts(productId: string): Promise<ProductCost[]> { return []; }
+  async createProductCost(cost: InsertProductCost): Promise<ProductCost> { 
+    throw new Error('Not implemented in mock'); 
+  }
+  async updateProductCost(id: string, updates: Partial<InsertProductCost>): Promise<ProductCost | undefined> { 
+    return undefined; 
+  }
+
+  async getSalesOrders(userId: string, startDate?: Date, endDate?: Date): Promise<SalesOrder[]> { return []; }
+  async createSalesOrder(order: InsertSalesOrder): Promise<SalesOrder> { 
+    throw new Error('Not implemented in mock'); 
+  }
+
+  async getSalesOrderItems(orderId: string): Promise<SalesOrderItem[]> { return []; }
+  async createSalesOrderItem(item: InsertSalesOrderItem): Promise<SalesOrderItem> { 
+    throw new Error('Not implemented in mock'); 
+  }
+
+  async getFinancialTransactions(userId: string, startDate?: Date, endDate?: Date): Promise<FinancialTransaction[]> { return []; }
+  async createFinancialTransaction(transaction: InsertFinancialTransaction): Promise<FinancialTransaction> { 
+    throw new Error('Not implemented in mock'); 
+  }
+
+  async getAllConnectedAmazonAccounts(): Promise<AmazonAccount[]> {
+    return mockDb['amazonAccounts'].filter((acc: any) => acc.status === 'connected');
+  }
+
+  async getDashboardKPIs(userId: string, startDate?: Date, endDate?: Date): Promise<{
+    grossRevenue: number; netRevenue: number; totalProfit: number; averageMargin: number;
+  }> {
+    return { grossRevenue: 0, netRevenue: 0, totalProfit: 0, averageMargin: 0 };
+  }
+
+  async getTopProducts(userId: string, limit: number = 10): Promise<{
+    product: Product; revenue: number; margin: number;
+  }[]> {
+    return [];
+  }
+}
+
+// Use mock storage in development with SKIP_AUTH
+export const storage: IStorage = process.env.SKIP_AUTH === 'true' 
+  ? new MockStorage()
+  : new DatabaseStorage();

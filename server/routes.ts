@@ -11,6 +11,7 @@ import {
   insertProductCostSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { getUserId } from "./authUtils";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -19,8 +20,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -36,7 +45,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Products routes
   app.get("/api/products", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
       const search = req.query.search as string;
@@ -61,7 +74,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const product = await storage.getProduct(id);
       
       if (!product) {
@@ -82,7 +99,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/products", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const productData = insertProductSchema.parse({
         ...req.body,
         userId,
@@ -103,7 +124,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/products/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const updates = req.body;
       
       // First check if product exists and belongs to user
@@ -127,7 +152,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/products/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // First check if product exists and belongs to user
       const existingProduct = await storage.getProduct(id);
@@ -151,7 +179,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id/costs", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // Verify user owns the product
       const product = await storage.getProduct(id);
@@ -174,7 +205,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id/costs/current", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const date = req.query.date ? new Date(req.query.date as string) : new Date();
       
       // Verify user owns the product
@@ -203,7 +238,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/products/:id/costs", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
       
       // Verify user owns the product
       const product = await storage.getProduct(id);
@@ -236,7 +274,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Amazon Listings routes
   app.get("/api/amazon-listings", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const amazonAccountId = req.query.amazonAccountId as string;
       const listings = await storage.getAmazonListings(userId, amazonAccountId);
       res.json(listings);
@@ -249,7 +291,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard analytics routes
   app.get("/api/dashboard/kpis", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       
@@ -263,7 +309,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/dashboard/top-products", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       
       const topProducts = await storage.getTopProducts(userId, limit);
@@ -277,7 +327,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sales routes
   app.get("/api/sales-orders", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "No user ID found" });
+      }
+      
       const amazonAccountId = req.query.amazonAccountId as string;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;

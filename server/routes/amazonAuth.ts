@@ -1,12 +1,17 @@
 import type { Express } from "express";
 import { isAuthenticated } from "../replitAuth";
 import { storage } from "../storage";
+import { getUserId } from "../authUtils";
 
 export function registerAmazonAuthRoutes(app: Express) {
   // Start Amazon OAuth flow
   app.get('/api/amazon-auth/start', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
       const { accountId, region = 'na' } = req.query;
       
       if (!accountId) {
@@ -68,7 +73,11 @@ export function registerAmazonAuthRoutes(app: Express) {
   // Amazon OAuth callback
   app.get('/api/amazon-auth/callback', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
       const { state, spapi_oauth_code, selling_partner_id } = req.query;
       
       console.log('Amazon OAuth callback received:', {
@@ -180,7 +189,11 @@ export function registerAmazonAuthRoutes(app: Express) {
   app.get('/api/amazon-auth/status/:accountId', isAuthenticated, async (req: any, res) => {
     try {
       const { accountId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
       
       const account = await storage.getAmazonAccount(accountId);
       
