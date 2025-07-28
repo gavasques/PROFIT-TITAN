@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { isAuthenticated } from "../replitAuth";
 import { storage } from "../storage";
 import { amazonSPService } from "../amazonSPService";
+import { AmazonSandboxService } from "../amazonSandboxService";
 import { insertAmazonAccountSchema } from "@shared/schema";
 
 export function registerAmazonRoutes(app: Express) {
@@ -81,60 +82,143 @@ export function registerAmazonRoutes(app: Express) {
   // Sync products from Amazon
   app.post('/api/amazon-accounts/:id/sync-products', isAuthenticated, async (req: any, res) => {
     try {
-      const { id } = req.params;
+      const { id: accountId } = req.params;
       const userId = req.user.claims.sub;
       
-      // For sandbox mode, create sample products instead of calling Amazon API
-      console.log('Creating sample products for sandbox mode');
+      const account = await storage.getAmazonAccount(accountId);
       
-      // Create sample products with proper field mapping
-      const sampleProducts = [
-        {
-          userId,
-          sku: "SAMPLE-001",
-          internalSku: "SAMPLE-001", // Use sku as internalSku for samples
-          name: "Fone Bluetooth Ultra",
-          description: "Fone de ouvido Bluetooth premium com cancelamento de ruído",
-          category: "Electronics",
-          brand: "TechBrand"
-        },
-        {
-          userId,
-          sku: "SAMPLE-002", 
-          internalSku: "SAMPLE-002",
-          name: "Carregador Wireless",
-          description: "Carregador sem fio compatível com todos os dispositivos",
-          category: "Electronics",
-          brand: "PowerTech"
-        },
-        {
-          userId,
-          sku: "SAMPLE-003", 
-          internalSku: "SAMPLE-003",
-          name: "Capa Protetora Premium",
-          description: "Capa protetora resistente a quedas e arranhões",
-          category: "Accessories",
-          brand: "ProtectCase"
+      if (!account || account.userId !== userId) {
+        return res.status(404).json({ message: "Amazon account not found" });
+      }
+      
+      // Initialize sandbox service
+      const sandboxService = new AmazonSandboxService(account);
+      
+      console.log('Syncing products from Amazon SP-API sandbox');
+      
+      // Use US marketplace for sandbox testing
+      const marketplaceId = 'ATVPDKIKX0DER';
+      
+      let productsToSync = [];
+      
+      // Try searching for products first
+      try {
+        const searchResults = await sandboxService.searchCatalogItems(
+          ['Echo', 'Kindle', 'Fire'], // Keywords that should return results in sandbox
+          [marketplaceId]
+        );
+        
+        if (searchResults?.items && searchResults.items.length > 0) {
+          productsToSync = searchResults.items;
         }
-      ];
-
-      // Check if sample products already exist and skip if they do
-      const existingProducts = await storage.getProducts(userId);
-      const existingSKUs = existingProducts.map(p => p.sku);
+      } catch (searchError) {
+        console.log('Search failed, trying specific ASINs');
+      }
       
-      for (const product of sampleProducts) {
-        if (!existingSKUs.includes(product.sku)) {
-          await storage.createProduct(product);
-          console.log(`Created sample product: ${product.name}`);
-        } else {
-          console.log(`Sample product ${product.sku} already exists, skipping`);
+      // If search didn't work, try specific ASINs that might work in sandbox
+      if (productsToSync.length === 0) {
+        const testASINs = ['B08N5WRWNW', 'B08N5VSZMR', 'B08N5W4HCG', 'B0000000001', 'B0EXAMPLE123'];
+        
+        for (const asin of testASINs) {
+          const item = await sandboxService.getCatalogItem(asin, [marketplaceId]);
+          if (item) {
+            productsToSync.push(item);
+          }
         }
       }
       
-      res.json({ message: "Sample products created successfully for sandbox mode" });
+      // If still no products, create some sample products as fallback
+      if (productsToSync.length === 0) {
+        console.log('No products found in sandbox, creating sample products');
+        
+        const sampleProducts = [
+          {
+            userId,
+            sku: "SANDBOX-001",
+            internalSku: "SANDBOX-001",
+            name: "Amazon Echo Dot (Sandbox Test)",
+            description: "Smart speaker with Alexa - Sandbox test product",
+            category: "Electronics",
+            brand: "Amazon"
+          },
+          {
+            userId,
+            sku: "SANDBOX-002", 
+            internalSku: "SANDBOX-002",
+            name: "Kindle Paperwhite (Sandbox Test)",
+            description: "E-reader with high-resolution display - Sandbox test product",
+            category: "Electronics",
+            brand: "Amazon"
+          },
+          {
+            userId,
+            sku: "SANDBOX-003", 
+            internalSku: "SANDBOX-003",
+            name: "Fire TV Stick (Sandbox Test)",
+            description: "Streaming device with Alexa Voice Remote - Sandbox test product",
+            category: "Electronics",
+            brand: "Amazon"
+          }
+        ];
+        
+        const existingProducts = await storage.getProducts(userId);
+        const existingSKUs = existingProducts.map(p => p.sku);
+        
+        for (const product of sampleProducts) {
+          if (!existingSKUs.includes(product.sku)) {
+            await storage.createProduct(product);
+            console.log(`Created sample product: ${product.name}`);
+          }
+        }
+        
+        res.json({ message: "Created sample products for sandbox testing", count: sampleProducts.length });
+        return;
+      }
+      
+      // Process products from sandbox API
+      let syncedCount = 0;
+      const existingProducts = await storage.getProducts(userId);
+      const existingSKUs = existingProducts.map(p => p.sku);
+      
+      for (const item of productsToSync) {
+        const asin = item.asin;
+        const summaries = item.summaries || [];
+        const images = item.images || [];
+        
+        const product = {
+          userId,
+          sku: asin,
+          internalSku: asin,
+          name: summaries[0]?.itemName || `Product ${asin}`,
+          description: summaries[0]?.manufacturer || '',
+          category: item.salesRanks?.[0]?.displayGroupRanks?.[0]?.title || 'General',
+          brand: summaries[0]?.brand || 'Unknown',
+          imageUrl: images[0]?.images?.[0]?.link || null
+        };
+        
+        if (!existingSKUs.includes(product.sku)) {
+          await storage.createProduct(product);
+          syncedCount++;
+          console.log(`Synced product from sandbox: ${product.name}`);
+        }
+      }
+      
+      // Update last sync time
+      await storage.updateAmazonAccount(accountId, {
+        lastSyncAt: new Date(),
+        status: 'connected'
+      });
+      
+      res.json({ 
+        message: "Products synced successfully from Amazon sandbox",
+        count: syncedCount
+      });
     } catch (error) {
-      console.error("Error creating sample products:", error);
-      res.status(500).json({ message: "Failed to create sample products" });
+      console.error("Error syncing products from sandbox:", error);
+      res.status(500).json({ 
+        message: "Failed to sync products from sandbox",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
