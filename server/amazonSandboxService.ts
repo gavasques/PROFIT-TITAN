@@ -26,33 +26,48 @@ export class AmazonSandboxService {
       return this.accessToken;
     }
 
+    console.log('Getting new access token for Amazon SP-API');
+    
     // Get new access token
     const tokenUrl = 'https://api.amazon.com/auth/o2/token';
+    
+    const tokenBody = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: this.account.refreshToken,
+      client_id: this.account.lwaAppId,
+      client_secret: this.account.lwaClientSecret
+    });
+    
+    console.log('Token request URL:', tokenUrl);
+    console.log('Client ID:', this.account.lwaAppId);
     
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: this.account.refreshToken,
-        client_id: this.account.lwaAppId,
-        client_secret: this.account.lwaClientSecret
-      })
+      body: tokenBody
     });
 
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get access token: ${error}`);
+      console.error('Failed to get access token:', response.status, responseText);
+      throw new Error(`Failed to get access token: ${response.status} - ${responseText}`);
     }
 
-    const data = await response.json();
-    this.accessToken = data.access_token;
-    // Token expires in 1 hour, set expiry to 55 minutes to be safe
-    this.tokenExpiry = new Date(Date.now() + 55 * 60 * 1000);
-    
-    return data.access_token;
+    try {
+      const data = JSON.parse(responseText);
+      this.accessToken = data.access_token;
+      // Token expires in 1 hour, set expiry to 55 minutes to be safe
+      this.tokenExpiry = new Date(Date.now() + 55 * 60 * 1000);
+      
+      console.log('Successfully obtained access token');
+      return data.access_token;
+    } catch (error) {
+      console.error('Failed to parse token response:', responseText);
+      throw new Error('Invalid token response from Amazon');
+    }
   }
 
   private async makeRequest(path: string, method: 'GET' | 'POST' = 'GET', body?: any) {
@@ -77,15 +92,27 @@ export class AmazonSandboxService {
     };
 
     console.log(`Making request to: ${url}`);
+    console.log(`Headers:`, headers);
+    
     const response = await fetch(url, options);
     
+    // Get response as text first
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API Error: ${response.status} - ${errorText}`);
-      throw new Error(`API request failed: ${response.status} - ${errorText}`);
+      console.error(`API Error: ${response.status}`);
+      console.error(`Response body: ${responseText.substring(0, 500)}`);
+      throw new Error(`API request failed: ${response.status} - ${responseText.substring(0, 200)}`);
     }
-
-    return response.json();
+    
+    // Try to parse as JSON
+    try {
+      return JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse response as JSON:', parseError);
+      console.error('Response text:', responseText.substring(0, 500));
+      throw new Error(`Invalid JSON response from API: ${responseText.substring(0, 100)}`);
+    }
   }
 
   async testConnection(): Promise<boolean> {
