@@ -87,35 +87,34 @@ export function registerAmazonRoutes(app: Express) {
       // For sandbox mode, create sample products instead of calling Amazon API
       console.log('Creating sample products for sandbox mode');
       
-      // Create sample products
+      // Create sample products with proper field mapping
       const sampleProducts = [
         {
           userId,
           sku: "SAMPLE-001",
-          internalSku: "INT-001", 
-          name: "Produto de Teste 1",
-          description: "Produto de exemplo para teste do sistema",
+          internalSku: "SAMPLE-001", // Use sku as internalSku for samples
+          name: "Fone Bluetooth Ultra",
+          description: "Fone de ouvido Bluetooth premium com cancelamento de ruído",
           category: "Electronics",
-          brand: "Test Brand",
-          imageUrl: null,
-          weight: null,
-          length: null,
-          width: null,
-          height: null
+          brand: "TechBrand"
         },
         {
           userId,
           sku: "SAMPLE-002", 
-          internalSku: "INT-002",
-          name: "Produto de Teste 2",
-          description: "Segundo produto de exemplo",
-          category: "Home",
-          brand: "Sample Brand",
-          imageUrl: null,
-          weight: null,
-          length: null,
-          width: null,
-          height: null
+          internalSku: "SAMPLE-002",
+          name: "Carregador Wireless",
+          description: "Carregador sem fio compatível com todos os dispositivos",
+          category: "Electronics",
+          brand: "PowerTech"
+        },
+        {
+          userId,
+          sku: "SAMPLE-003", 
+          internalSku: "SAMPLE-003",
+          name: "Capa Protetora Premium",
+          description: "Capa protetora resistente a quedas e arranhões",
+          category: "Accessories",
+          brand: "ProtectCase"
         }
       ];
 
