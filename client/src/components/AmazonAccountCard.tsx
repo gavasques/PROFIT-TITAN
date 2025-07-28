@@ -110,7 +110,9 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const syncProductsMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/amazon-accounts/${account.id}/sync-products`);
+      return await apiRequest(`/api/amazon-accounts/${account.id}/sync-products`, {
+        method: "POST"
+      });
     },
     onSuccess: () => {
       toast({
@@ -130,7 +132,9 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const syncOrdersMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/amazon-accounts/${account.id}/sync-orders`);
+      return await apiRequest(`/api/amazon-accounts/${account.id}/sync-orders`, {
+        method: "POST"
+      });
     },
     onSuccess: () => {
       toast({
@@ -150,7 +154,9 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const syncAllMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/amazon-accounts/${account.id}/sync-all`);
+      return await apiRequest(`/api/amazon-accounts/${account.id}/sync-all`, {
+        method: "POST"
+      });
     },
     onSuccess: () => {
       toast({
@@ -170,7 +176,9 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/amazon-accounts/${account.id}/test-connection`);
+      return await apiRequest(`/api/amazon-accounts/${account.id}/test-connection`, {
+        method: "POST"
+      });
     },
     onSuccess: (data: any) => {
       toast({
@@ -193,7 +201,9 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("DELETE", `/api/amazon-accounts/${account.id}`);
+      return await apiRequest(`/api/amazon-accounts/${account.id}`, {
+        method: "DELETE"
+      });
     },
     onSuccess: () => {
       toast({
@@ -249,7 +259,10 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
                 <DropdownMenuItem 
                   onClick={async () => {
                     try {
-                      const response = await apiRequest("GET", `/api/amazon-auth/start?accountId=${account.id}&region=${account.region}`);
+                      const response = await apiRequest(
+                        `/api/amazon-auth/start?accountId=${account.id}&region=${account.region}`,
+                        { method: "GET" }
+                      );
                       if (response.authUrl) {
                         window.location.href = response.authUrl;
                       }
@@ -272,7 +285,9 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
                 <DropdownMenuItem 
                   onClick={async () => {
                     try {
-                      const response = await apiRequest("POST", `/api/amazon-accounts/${account.id}/test-auth`);
+                      const response = await apiRequest(`/api/amazon-accounts/${account.id}/test-auth`, {
+                        method: "POST"
+                      });
                       console.log('Auth test result:', response);
                       toast({
                         title: "Teste de Autenticação",
