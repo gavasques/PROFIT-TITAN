@@ -111,28 +111,48 @@ export class AmazonSPService {
   }
 
   async syncProducts(amazonAccountId: string, userId: string): Promise<{ existingCount: number, newCount: number, totalCount: number }> {
+    console.log(`🔄 [SP-API SERVICE] Starting syncProducts for account ${amazonAccountId}, user ${userId}`);
+    
     try {
+      console.log(`📋 [DB LOOKUP] Getting Amazon account from database...`);
       const amazonAccount = await storage.getAmazonAccount(amazonAccountId);
       if (!amazonAccount) {
+        console.error(`❌ [DB ERROR] Amazon account not found in database: ${amazonAccountId}`);
         throw new Error('Amazon account not found');
       }
+      
+      console.log(`✅ [ACCOUNT DATA] Found account: ${amazonAccount.accountName}`);
+      console.log(`🔍 [CREDENTIALS] RefreshToken: ${amazonAccount.refreshToken ? 'present' : 'missing'}, LWA: ${amazonAccount.lwaAppId ? 'present' : 'missing'}`);
+      console.log(`📊 [ACCOUNT STATUS] Status: ${amazonAccount.status}, Region: ${amazonAccount.region}, Marketplace: ${amazonAccount.marketplaceId}`);
 
       // Validate account credentials before proceeding
-      console.log('🔐 Validating Amazon credentials...');
+      console.log('🔐 [VALIDATION] Starting credential validation...');
       try {
+        console.log('🔐 [VALIDATION] Calling validateAccountCredentials...');
         const isValidCredentials = await this.validateAccountCredentials(amazonAccount);
+        console.log(`🔐 [VALIDATION] Result: ${isValidCredentials}`);
+        
         if (!isValidCredentials) {
+          console.log('❌ [VALIDATION] Credentials invalid, updating account status...');
           await storage.updateAmazonAccount(amazonAccountId, {
             status: 'authorization_error'
           });
           throw new Error('Credenciais Amazon inválidas ou expiradas. Reconecte sua conta.');
         }
-        console.log('✅ Credentials validated successfully');
+        console.log('✅ [VALIDATION] Credentials validated successfully');
       } catch (credentialsError) {
-        console.error('❌ Credential validation error:', credentialsError);
-        await storage.updateAmazonAccount(amazonAccountId, {
-          status: 'authorization_error'
-        });
+        console.error('❌ [VALIDATION ERROR] Credential validation failed:', credentialsError);
+        console.error('❌ [VALIDATION ERROR] Stack:', credentialsError instanceof Error ? credentialsError.stack : 'No stack');
+        
+        try {
+          await storage.updateAmazonAccount(amazonAccountId, {
+            status: 'authorization_error'
+          });
+          console.log('✅ [DB] Account status updated to authorization_error');
+        } catch (dbError) {
+          console.error('❌ [DB ERROR] Failed to update account status:', dbError);
+        }
+        
         throw new Error(`Erro na validação das credenciais: ${credentialsError instanceof Error ? credentialsError.message : 'Erro desconhecido'}`);
       }
 

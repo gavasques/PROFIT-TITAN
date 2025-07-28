@@ -167,36 +167,58 @@ export function registerAmazonRoutes(app: Express) {
 
   // Sync products from Amazon
   app.post('/api/amazon-accounts/:id/sync-products', isAuthenticated, async (req: any, res) => {
+    const startTime = Date.now();
+    let step = 'initialization';
+    
     try {
       const { id: accountId } = req.params;
       const userId = req.user.claims.sub;
       
-      console.log(`Sync products request for account: ${accountId}, user: ${userId}`);
+      console.log(`🚀 [SYNC START] Account: ${accountId}, User: ${userId}, Time: ${new Date().toISOString()}`);
       
+      step = 'account_lookup';
+      console.log(`📋 [STEP] ${step}`);
       const account = await storage.getAmazonAccount(accountId);
       
       if (!account || account.userId !== userId) {
-        console.error(`Account not found or unauthorized: ${accountId}`);
+        console.error(`❌ [AUTH ERROR] Account not found or unauthorized: ${accountId}`);
         return res.status(404).json({ message: "Amazon account not found" });
       }
       
-      console.log(`Found account: ${account.accountName}, region: ${account.region}`);
+      console.log(`✅ [ACCOUNT FOUND] Name: ${account.accountName}, Region: ${account.region}, Status: ${account.status}`);
+      console.log(`🔑 [CREDENTIALS CHECK] Has refresh token: ${!!account.refreshToken}, LWA App: ${!!account.lwaAppId}`);
+      
+      step = 'sync_products';
+      console.log(`📋 [STEP] ${step} - Calling amazonSPService.syncProducts`);
       
       // Use the real Amazon SP-API service to sync products
       const syncResult = await amazonSPService.syncProducts(accountId, userId);
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ [SYNC SUCCESS] Duration: ${duration}ms, New: ${syncResult.newCount}, Existing: ${syncResult.existingCount}`);
       
       res.json({ 
         message: `Sincronização concluída: ${syncResult.newCount} novos produtos, ${syncResult.existingCount} existentes`,
         newCount: syncResult.newCount,
         existingCount: syncResult.existingCount,
-        totalCount: syncResult.totalCount
+        totalCount: syncResult.totalCount,
+        duration: duration
       });
       
     } catch (error) {
-      console.error("Error syncing products:", error);
+      const duration = Date.now() - startTime;
+      console.error(`❌ [SYNC ERROR] Step: ${step}, Duration: ${duration}ms`);
+      console.error(`❌ [ERROR DETAILS]`, {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      });
+      
       res.status(500).json({ 
         message: "Erro ao sincronizar produtos",
-        error: error instanceof Error ? error.message : "Erro desconhecido"
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+        step: step,
+        duration: duration
       });
     }
   });
@@ -337,6 +359,54 @@ export function registerAmazonRoutes(app: Express) {
     } catch (error) {
       console.error("Error deleting Amazon account:", error);
       res.status(500).json({ message: "Failed to delete Amazon account" });
+    }
+  });
+
+  // Simple test endpoint to isolate issues
+  app.post('/api/amazon-accounts/:id/test-simple', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id: accountId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      console.log(`🧪 [SIMPLE TEST] Account: ${accountId}, User: ${userId}`);
+      
+      // Step 1: Get account
+      const account = await storage.getAmazonAccount(accountId);
+      if (!account || account.userId !== userId) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      
+      console.log(`✅ [TEST] Account found: ${account.accountName}`);
+      
+      // Step 2: Test credential validation only
+      try {
+        console.log(`🔐 [TEST] Testing credential validation...`);
+        const isValid = await amazonSPService.validateAccountCredentials(account);
+        console.log(`🔐 [TEST] Validation result: ${isValid}`);
+        
+        res.json({
+          success: true,
+          accountName: account.accountName,
+          credentialsValid: isValid,
+          hasRefreshToken: !!account.refreshToken,
+          hasLWAAppId: !!account.lwaAppId,
+          accountStatus: account.status
+        });
+      } catch (validationError) {
+        console.error(`❌ [TEST] Validation failed:`, validationError);
+        res.json({
+          success: false,
+          error: 'Validation failed',
+          details: validationError instanceof Error ? validationError.message : 'Unknown error'
+        });
+      }
+      
+    } catch (error) {
+      console.error(`❌ [SIMPLE TEST ERROR]:`, error);
+      res.status(500).json({ 
+        message: "Test failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
