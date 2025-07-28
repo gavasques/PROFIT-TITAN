@@ -85,10 +85,18 @@ export class AmazonSPService {
 
   async syncProducts(amazonAccountId: string, userId: string): Promise<{ existingCount: number, newCount: number, totalCount: number }> {
     try {
-      // Check if should use sandbox mode
       const amazonAccount = await storage.getAmazonAccount(amazonAccountId);
       if (!amazonAccount) {
         throw new Error('Amazon account not found');
+      }
+
+      // Update refresh token if available in environment
+      if (process.env.AMAZON_REFRESH_TOKEN && amazonAccount.refreshToken !== process.env.AMAZON_REFRESH_TOKEN) {
+        await storage.updateAmazonAccount(amazonAccountId, {
+          refreshToken: process.env.AMAZON_REFRESH_TOKEN
+        });
+        // Clear cached client to force recreation with new token
+        this.spClients.delete(amazonAccountId);
       }
 
       try {
