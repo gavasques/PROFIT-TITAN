@@ -8,7 +8,7 @@ export function useAuth() {
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
       try {
-        // In development mode, the backend handles auth without requiring a token
+        // Try to get user data
         const response = await apiRequest("/api/auth/user", {
           headers: token ? {
             Authorization: `Bearer ${token}`,
@@ -24,7 +24,7 @@ export function useAuth() {
       }
     },
     retry: false,
-    enabled: !!token, // Only run query if token exists
+    // Always try to fetch user data, regardless of token (for SKIP_AUTH mode)
   });
 
   const logout = async () => {
@@ -47,7 +47,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading: token ? isLoading : false, // Don't show loading if no token
+    isLoading,
     isAuthenticated: !!user,
     logout,
     error,
