@@ -1,0 +1,167 @@
+Selecione o idioma usado para fornecer informações da oferta:
+Identifique o idioma que você está usando. A oferta será enviada para traduções neste idioma e será traduzida para outros idiomas do Seller Central com base na sua seleção. A publicação da oferta será atrasada na tradução caso essa seleção não esteja correta
+
+Obrigatório
+Nome da oferta
+Informe o nome do seu aplicativo como você gostaria que ele fosse exibido na loja de aplicativos
+
+Obrigatório
+Categoria da oferta
+Esta é a categoria na qual seu aplicativo será apresentado. Para a Solução de Serviços Completos, selecione apenas um. Para outras, selecione um máximo de cinco Observação: analisaremos sua seleção para validação.
+
+Selecione no mínimo 1 opção(ões)
+Oferta
+Precificação automática
+Inventário e gestão de pedidos
+Soluções de envio
+Otimização de publicidade
+Promoções
+Pesquisa e prospecção de produtos
+Avaliações e análises
+Serviço de comunicação entre cliente e vendedor
+Análise e relatórios
+Contabilidade
+Conectores de soluções de e-commerce
+Soluções de serviço completas
+Financiamento e crédito
+Soluções de pagamento
+Impostos
+Descrição breve
+Descreva brevemente a funcionalidade do seu aplicativo (máx. de 200 caracteres)
+
+Obrigatório
+Descrição do aplicativo (versão longa)
+Inclua a descrição da solução aqui. (no máximo 4.000 caracteres)
+
+
+Obrigatório
+Recursos do aplicativo
+Inclua uma lista com marcadores de 2 a 6 recursos no máximo
+
+
+Obrigatório
+Quem deve usar este
+Inclua uma lista com marcadores de seu cliente alvo ou orientação a candidatura do cliente. Por favor, indique alguma restrição (por exemplo, ASINs, GMS) para garantir que somente os usuários certos estejam interessados em seus aplicativos. Isso também é onde você deve indicar qualquer navegador ou os requisitos adicionais necessários para utilizar seu aplicativo da internet.
+
+
+Obrigatório
+URL do produto
+Este link deve redirecionar para uma página específica do site para este aplicativo e que é gerenciada diretamente pela sua empresa. Este será o ponto de entrada principal dos vendedores para a sua solução. Recomendamos adicionar uma tag ref para fins de rastreamento.
+
+Obrigatório
+URL do suporte
+Este link deve funcionar e redirecionar para uma página de ajuda ou sistema de ajuda existente da sua empresa.
+
+Obrigatório
+E-mail do suporte
+Esse e-mail deve funcionar e ser usado no sistema de ajuda existente oferecido pela sua empresa. Podemos testar este e-mail.
+
+Telefone de suporte
+Este número de telefone deve funcionar e ser usado no sistema de ajuda existente oferecido pela sua empresa. Não utilize um e-mail pessoal. Podemos testar esse número de telefone.
+
+Idiomas do suporte ao cliente
+Escolha todos os idiomas que a sua equipe de suporte ao cliente pode atender na lista a seguir. Observação: analisaremos sua seleção para validação. Isso será incluído na página de detalhes e poderá ser filtrado durante pesquisas.
+
+Selecione no mínimo 1 opção(ões)
+Árabe
+Chinês
+Holandês
+Francês
+Alemão
+Hindi
+Inglês
+Italiano
+Japonês
+Coreano
+Polonês
+Português
+Russo
+Eslovaco
+Espanhol
+Turco
+Sueco
+Funcionalidade
+Escolha todas as opções aplicáveis na lista a seguir. Observação: analisaremos a sua seleção para validação. Isso será incluído em marcadores na primeira seção da Página de detalhes. Selecione todas as que se aplicam.
+
+Selecione no mínimo 1 opção(ões)
+Oferta
+Precificação automática
+Inventário e gestão de pedidos
+Soluções de envio
+Anúncios
+Promoções
+Pesquisa e prospecção de produtos
+Avaliações e análises
+Serviço de comunicação entre cliente e vendedor
+Análise e relatórios
+Contabilidade e remessa de impostos
+Conectores de soluções de e-commerce
+Multicanal
+Financiamento e crédito
+Selecione os programas para os quais você oferece suporte
+Global Selling
+Amazon Business (B2B)
+Proprietário da marca
+Enviado pela Amazon
+Nível de serviço de envio do vendedor (MSS)
+Prime com Envio pelo vendedor (SFP)
+Enviado pelo vendedor (rede de logística do vendedor)
+Logística multicanal
+Sites suportados
+Obrigatório
+América do Norte
+
+EUA
+
+Canadá
+
+México
+América do Sul
+
+Brasil
+Europa
+
+Bélgica
+
+UK
+
+Alemanha
+
+França
+
+Espanha
+
+Itália
+
+Países Baixos
+
+Turquia
+
+Polônia
+
+África do Sul
+
+Suécia
+
+Irlanda
+Oriente Médio
+
+Emirados Árabes Unidos
+
+Arábia Saudita
+
+Egito
+Ásia
+
+China
+
+Japão
+
+Cingapura
+Austrália
+
+Austrália
+Índia
+
+Índia
+
