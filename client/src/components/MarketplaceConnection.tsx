@@ -19,14 +19,12 @@ export default function MarketplaceConnection() {
 
   const { data: amazonAccounts = [], isLoading, error } = useQuery({
     queryKey: ["/api/amazon-accounts"],
-    onError: (error: Error) => {
-      console.log("MarketplaceConnection query error:", error);
-    }
-  });
+  }) as { data: any[], isLoading: boolean, error: any };
 
   const createAccountMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("POST", "/api/amazon-accounts", data);
+      const response = await apiRequest("POST", "/api/amazon-accounts", data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/amazon-accounts"] });

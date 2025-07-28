@@ -83,10 +83,8 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
       setIsConnecting(true);
       // Use form data directly - credentials are pre-configured in environment
       
-      return await apiRequest("/api/amazon-accounts", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("POST", "/api/amazon-accounts", data);
+      return response.json();
     },
     onSuccess: () => {
       toast({

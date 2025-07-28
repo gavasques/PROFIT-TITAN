@@ -24,7 +24,7 @@ export default function Sidebar() {
   const { data: amazonAccounts = [] } = useQuery({
     queryKey: ["/api/amazon-accounts"],
     enabled: isAuthenticated,
-  });
+  }) as { data: any[] };
 
   const menuItems = [
     {
