@@ -139,4 +139,21 @@ router.get('/user', async (req, res) => {
   }
 });
 
+// Logout user (clear session/token)
+router.post('/logout', async (req, res) => {
+  try {
+    // In development mode with SKIP_AUTH, just return success
+    if (process.env.SKIP_AUTH === 'true') {
+      return res.json({ message: 'Logout realizado com sucesso' });
+    }
+    
+    // In production, the token is managed client-side (JWT)
+    // So we just return success - the client will remove the token
+    res.json({ message: 'Logout realizado com sucesso' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+});
+
 export default router;

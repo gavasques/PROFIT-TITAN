@@ -26,9 +26,22 @@ export function useAuth() {
     retry: false,
   });
 
-  const logout = () => {
-    localStorage.removeItem("auth_token");
-    window.location.href = "/login";
+  const logout = async () => {
+    try {
+      // Call logout endpoint
+      await apiRequest("/api/auth/logout", {
+        method: "POST",
+        headers: token ? {
+          Authorization: `Bearer ${token}`,
+        } : {},
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      // Always clear token and redirect, even if API call fails
+      localStorage.removeItem("auth_token");
+      window.location.href = "/login";
+    }
   };
 
   return {

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste de Autenticação</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        button { margin: 10px; padding: 10px 20px; }
+        .result { margin: 20px 0; padding: 10px; background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <h1>Teste do Sistema de Autenticação</h1>
+    
+    <h2>Login/Registro</h2>
+    <button onclick="testRegister()">Criar Usuário</button>
+    <button onclick="testLogin()">Fazer Login</button>
+    
+    <h2>Funcionalidades Autenticadas</h2>
+    <button onclick="testGetUser()">Obter Usuário Atual</button>
+    <button onclick="testLogout()">Fazer Logout</button>
+    
+    <div id="result" class="result"></div>
+
+    <script>
+        let authToken = null;
+        
+        async function testRegister() {
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: `test${Date.now()}@example.com`,
+                        password: '123456',
+                        firstName: 'Test',
+                        lastName: 'User'
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    authToken = data.token;
+                    document.getElementById('result').innerHTML = 
+                        `<h3>✅ Registro bem-sucedido!</h3><p>Token: ${data.token.substring(0, 50)}...</p><p>Usuário: ${data.user.email}</p>`;
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        `<h3>❌ Erro no registro</h3><p>${JSON.stringify(data)}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<h3>❌ Erro</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testLogin() {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'dev@test.com',
+                        password: '123456'
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    authToken = data.token;
+                    document.getElementById('result').innerHTML = 
+                        `<h3>✅ Login bem-sucedido!</h3><p>Token: ${data.token.substring(0, 50)}...</p><p>Usuário: ${data.user.email}</p>`;
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        `<h3>❌ Erro no login</h3><p>${JSON.stringify(data)}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<h3>❌ Erro</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testGetUser() {
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const response = await fetch('/api/auth/user', {
+                    method: 'GET',
+                    headers: headers
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = 
+                        `<h3>✅ Usuário obtido!</h3><p>Email: ${data.email}</p><p>Nome: ${data.firstName} ${data.lastName}</p><p>ID: ${data.id}</p>`;
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        `<h3>❌ Erro ao obter usuário</h3><p>${JSON.stringify(data)}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<h3>❌ Erro</h3><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testLogout() {
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: headers
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    authToken = null;
+                    document.getElementById('result').innerHTML = 
+                        `<h3>✅ Logout bem-sucedido!</h3><p>${JSON.stringify(data)}</p>`;
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        `<h3>❌ Erro no logout</h3><p>${JSON.stringify(data)}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `<h3>❌ Erro</h3><p>${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
