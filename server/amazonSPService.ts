@@ -1,4 +1,4 @@
-import * as SellingPartnerAPI from 'amazon-sp-api';
+import SellingPartnerAPI from 'amazon-sp-api';
 import { storage } from './storage';
 import type { 
   AmazonAccount, 
@@ -23,7 +23,7 @@ export class AmazonSPService {
   private spClients: Map<string, any> = new Map();
 
   private createClient(credentials: AmazonCredentials): any {
-    return new (SellingPartnerAPI as any)({
+    return new SellingPartnerAPI({
       region: credentials.region,
       refresh_token: credentials.refresh_token,
       credentials: {
