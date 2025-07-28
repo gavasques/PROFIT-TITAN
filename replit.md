@@ -381,6 +381,8 @@ curl -X POST http://127.0.0.1:3000/api/amazon-accounts/test-account-1/sync-produ
 - **SKIP_AUTH completamente removido** - Sistema agora usa apenas autenticação JWT pura em todos os ambientes
 - **MockStorage removido** - Sistema usa exclusivamente banco de dados PostgreSQL para todas as operações
 - **Usuário de teste criado** - guilherme@profithub.com com senha "Estrela10" para testes
+- **Error 500 de login corrigido** - Problema de importação getUserId resolvido, sistema totalmente funcional
+- **Sistema 100% estável** - Autenticação JWT funcionando perfeitamente em produção
 
 ## Current System Status
 

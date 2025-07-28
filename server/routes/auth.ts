@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage';
 import { hashPassword, comparePassword, generateToken, authenticateToken } from '../auth';
+import { getUserId } from '../authUtils';
 import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } from '../../shared/schema';
 import { emailService } from '../emailService';
 import { randomBytes } from 'crypto';
@@ -94,9 +95,13 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user (protected route)
-router.get('/user', authenticateToken, async (req, res) => {
+router.get('/user', authenticateToken, async (req: any, res) => {
   try {
-    const userId = getUserId(req);
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: 'Dados de usuário não encontrados' });
+    }
+    
+    const userId = req.user.userId;
     const user = await storage.getUser(userId);
     
     if (!user) {
