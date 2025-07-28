@@ -164,7 +164,7 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              As credenciais SP-API já estão configuradas no sistema. Você só precisa fornecer as informações básicas da sua conta Amazon.
+              <strong>Credenciais temporárias:</strong> O sistema criará a conta com credenciais de desenvolvimento. Você precisará fornecer credenciais SP-API válidas posteriormente para sincronização completa.
             </AlertDescription>
           </Alert>
         )}
