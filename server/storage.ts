@@ -8,6 +8,7 @@ import {
   salesOrderItems,
   financialTransactions,
   type User,
+  type InsertUser,
   type UpsertUser,
   type AmazonAccount,
   type InsertAmazonAccount,
@@ -29,9 +30,11 @@ import { eq, desc, and, gte, lte, sql, isNull, or } from "drizzle-orm";
 import { mockDb } from "./mockDb";
 
 export interface IStorage {
-  // User operations (required for Replit Auth)
+  // User operations
   getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
 
   // Amazon Account operations
   getAmazonAccounts(userId: string): Promise<AmazonAccount[]>;
@@ -43,6 +46,7 @@ export interface IStorage {
   // Product operations
   getProducts(userId: string): Promise<Product[]>;
   getProductsByUserId(userId: string): Promise<Product[]>;
+  getProductsPaginated?(userId: string, page: number, limit: number, search?: string): Promise<{ products: Product[]; total: number; page: number; totalPages: number }>;
   getProductBySku(sku: string, userId: string): Promise<Product | undefined>;
   getProduct(id: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
@@ -94,17 +98,24 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }

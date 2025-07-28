@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
+import authRoutes from "./routes/auth";
 import { registerAmazonRoutes } from "./routes/amazon";
 import { registerAmazonAuthRoutes } from "./routes/amazonAuth";
 import { registerProductRoutes } from "./routes/products";
@@ -15,9 +16,12 @@ import { getUserId } from "./authUtils";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
-  await setupAuth(app);
+  setupAuth(app);
 
-  // Auth routes
+  // Mount auth routes
+  app.use('/api/auth', authRoutes);
+
+  // Legacy auth route for compatibility
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);

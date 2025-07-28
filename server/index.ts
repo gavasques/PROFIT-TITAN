@@ -1,6 +1,4 @@
-// Load environment variables first
-import dotenv from 'dotenv';
-dotenv.config();
+// Environment variables handled by Replit
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";

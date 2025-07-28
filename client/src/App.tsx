@@ -4,7 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
 import Products from "@/pages/Products";
 import Costs from "@/pages/Costs";
@@ -25,8 +26,21 @@ function Router() {
       <Route path="/oauth-test" component={OAuthTest} />
       <Route path="/oauth-diagnostic" component={OAuthDiagnostic} />
       <Route path="/lwa-setup" component={LWASetupGuide} />
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+      {!isAuthenticated ? (
+        <>
+          <Route path="/login" component={Login} />
+          <Route path="/register" component={Register} />
+          <Route path="/" component={Login} />
+        </>
+      ) : isLoading ? (
+        <Route path="/" component={() => (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <p>Carregando...</p>
+            </div>
+          </div>
+        )} />
       ) : (
         <>
           <Route path="/" component={Dashboard} />

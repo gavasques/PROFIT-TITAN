@@ -42,11 +42,7 @@ export class AmazonSPService {
         auto_request_tokens: true,
         debug_log: process.env.NODE_ENV === 'development',
         use_sandbox: process.env.NODE_ENV === 'development' && process.env.AMAZON_USE_SANDBOX === 'true',
-        endpoints_versions: {
-          'catalog': '2022-04-01',
-          'listings': '2021-08-01',
-          'reports': 'v2021-06-30'
-        }
+        version: '2021-08-01'
       }
     });
   }

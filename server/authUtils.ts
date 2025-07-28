@@ -4,5 +4,5 @@ export function getUserId(req: any): string | null {
     return 'dev-user-123'; // Fixed dev user ID
   }
   
-  return req.user?.claims?.sub || null;
+  return req.user?.userId || null;
 }
