@@ -47,7 +47,7 @@ export function registerAmazonRoutes(app: Express) {
         aws_access_key: validatedData.awsAccessKey,
         aws_secret_key: validatedData.awsSecretKey,
         aws_role: validatedData.awsRole,
-        region: validatedData.region as 'na' | 'eu' | 'fe'
+        region: validatedData.region as 'na' | 'eu' | 'fe' | 'br'
       });
 
       if (!isValid) {

@@ -39,7 +39,7 @@ const amazonAccountSchema = z.object({
   accountName: z.string().min(1, "Nome da conta é obrigatório"),
   sellerId: z.string().min(1, "Seller ID é obrigatório"),
   marketplaceId: z.string().min(1, "Marketplace ID é obrigatório"),
-  region: z.enum(["na", "eu", "fe"], {
+  region: z.enum(["na", "eu", "fe", "br"], {
     errorMap: () => ({ message: "Selecione uma região válida" })
   }),
   refreshToken: z.string().optional(),
@@ -114,6 +114,7 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
     { value: "na", label: "América do Norte (EUA, Canadá, México)", marketplaces: "ATVPDKIKX0DER, A2EUQ1WTGCTBG2, A1AM78C64UM0Y8" },
     { value: "eu", label: "Europa (Alemanha, Reino Unido, França, etc.)", marketplaces: "A1PA6795UKMFR9, A1F83G8C2ARO7P, A13V1IB3VIYZZH" },
     { value: "fe", label: "Extremo Oriente (Japão, Austrália, Singapura)", marketplaces: "A1VC38T7YXB528, A39IBJ37TRP1C6, A17E79C6D8DWNP" },
+    { value: "br", label: "Brasil", marketplaces: "A2Q3Y263D00KWC" },
   ];
 
   const handleSubmit = (data: AmazonAccountFormData) => {
@@ -178,7 +179,7 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Região onde sua conta está registrada
+                      Região onde sua conta está registrada. Brasil: A2Q3Y263D00KWC
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -211,10 +212,10 @@ export function AmazonConnectionModal({ open, onOpenChange }: AmazonConnectionMo
                   <FormItem>
                     <FormLabel>Marketplace ID</FormLabel>
                     <FormControl>
-                      <Input placeholder="ATVPDKIKX0DER" {...field} />
+                      <Input placeholder="Brasil: A2Q3Y263D00KWC, EUA: ATVPDKIKX0DER" {...field} />
                     </FormControl>
                     <FormDescription>
-                      ID do marketplace principal
+                      ID do marketplace principal. Brasil: A2Q3Y263D00KWC
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

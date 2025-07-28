@@ -51,7 +51,7 @@ export const amazonAccounts = pgTable("amazon_accounts", {
   awsAccessKey: varchar("aws_access_key").notNull(),
   awsSecretKey: text("aws_secret_key").notNull(),
   awsRole: text("aws_role").notNull(),
-  region: varchar("region").notNull().default("na"), // na, eu, fe
+  region: varchar("region").notNull().default("na"), // na, eu, fe, br
   status: varchar("status").notNull().default("pending"), // pending, connected, error, disconnected
   lastSyncAt: timestamp("last_sync_at"),
   accountName: varchar("account_name").notNull(), // User-friendly name like "Amazon US", "Amazon BR"

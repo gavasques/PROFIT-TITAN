@@ -1,4 +1,4 @@
-import SellingPartnerAPI from 'amazon-sp-api';
+import * as SellingPartnerAPI from 'amazon-sp-api';
 import { storage } from './storage';
 import type { 
   AmazonAccount, 
@@ -16,14 +16,14 @@ export interface AmazonCredentials {
   aws_access_key: string;
   aws_secret_key: string;
   aws_role: string;
-  region: 'na' | 'eu' | 'fe';
+  region: 'na' | 'eu' | 'fe' | 'br';
 }
 
 export class AmazonSPService {
-  private spClients: Map<string, SellingPartnerAPI> = new Map();
+  private spClients: Map<string, any> = new Map();
 
-  private createClient(credentials: AmazonCredentials): SellingPartnerAPI {
-    return new SellingPartnerAPI({
+  private createClient(credentials: AmazonCredentials): any {
+    return new (SellingPartnerAPI as any)({
       region: credentials.region,
       refresh_token: credentials.refresh_token,
       credentials: {
@@ -36,7 +36,7 @@ export class AmazonSPService {
     });
   }
 
-  async getClient(amazonAccountId: string): Promise<SellingPartnerAPI> {
+  async getClient(amazonAccountId: string): Promise<any> {
     if (this.spClients.has(amazonAccountId)) {
       return this.spClients.get(amazonAccountId)!;
     }
@@ -245,7 +245,7 @@ export class AmazonSPService {
         amazonOrderId: order.AmazonOrderId,
         orderDate: new Date(order.PurchaseDate),
         status: order.OrderStatus,
-        totalAmount: parseFloat(order.OrderTotal?.Amount || '0'),
+        totalAmount: parseFloat(order.OrderTotal?.Amount || '0').toString(),
         currency: order.OrderTotal?.CurrencyCode || 'USD',
         buyerEmail: order.BuyerInfo?.BuyerEmail || null,
         shippingAddress: JSON.stringify(order.ShippingAddress || {}),
@@ -274,8 +274,8 @@ export class AmazonSPService {
             sku: item.SellerSKU,
             title: item.Title,
             quantity: parseInt(item.QuantityOrdered),
-            unitPrice: parseFloat(item.ItemPrice?.Amount || '0'),
-            totalPrice: parseFloat(item.ItemPrice?.Amount || '0') * parseInt(item.QuantityOrdered),
+            unitPrice: parseFloat(item.ItemPrice?.Amount || '0').toString(),
+            totalPrice: (parseFloat(item.ItemPrice?.Amount || '0') * parseInt(item.QuantityOrdered)).toString(),
             currency: item.ItemPrice?.CurrencyCode || 'USD'
           };
 
@@ -297,9 +297,9 @@ export class AmazonSPService {
         orderId: event.AmazonOrderId || null,
         sku: event.SellerSKU || null,
         description: this.getTransactionDescription(event, eventType),
-        grossAmount: this.calculateGrossAmount(event),
-        feeAmount: this.calculateFeeAmount(event),
-        netAmount: this.calculateNetAmount(event),
+        grossAmount: this.calculateGrossAmount(event).toString(),
+        feeAmount: this.calculateFeeAmount(event).toString(),
+        netAmount: this.calculateNetAmount(event).toString(),
         currency: event.ChargeList?.[0]?.ChargeAmount?.CurrencyCode || 'USD',
         details: JSON.stringify(event)
       };
