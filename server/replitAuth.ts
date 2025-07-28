@@ -63,6 +63,7 @@ async function upsertUser(
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    password: "", // OAuth users don't need passwords
   });
 }
 
@@ -96,6 +97,7 @@ export async function setupAuth(app: Express) {
       firstName: mockUser.firstName,
       lastName: mockUser.lastName,
       profileImageUrl: mockUser.profileImageUrl,
+      password: "", // Dev users don't need passwords
     });
 
     passport.serializeUser((user: Express.User, cb) => cb(null, user));

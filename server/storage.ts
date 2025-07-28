@@ -35,6 +35,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
 
   // Amazon Account operations
   getAmazonAccounts(userId: string): Promise<AmazonAccount[]>;
@@ -46,7 +47,7 @@ export interface IStorage {
   // Product operations
   getProducts(userId: string): Promise<Product[]>;
   getProductsByUserId(userId: string): Promise<Product[]>;
-  getProductsPaginated?(userId: string, page: number, limit: number, search?: string): Promise<{ products: Product[]; total: number; page: number; totalPages: number }>;
+  getProductsPaginated(userId: string, page: number, limit: number, search?: string): Promise<{ products: Product[]; total: number; page: number; totalPages: number }>;
   getProductBySku(sku: string, userId: string): Promise<Product | undefined>;
   getProduct(id: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
@@ -58,6 +59,7 @@ export interface IStorage {
   getAmazonListingBySkuAndAccount(sku: string, amazonAccountId: string): Promise<AmazonListing | undefined>;
   createAmazonListing(listing: InsertAmazonListing): Promise<AmazonListing>;
   updateAmazonListing(id: string, updates: Partial<InsertAmazonListing>): Promise<AmazonListing | undefined>;
+  upsertAmazonListing(listing: InsertAmazonListing): Promise<AmazonListing>;
 
   // Product Cost operations
   getProductCosts(productId: string): Promise<ProductCost[]>;
@@ -117,26 +119,20 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
-  }
-
-  async createUser(userData: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .returning();
-    return user;
-  }
-
-  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
+  async upsertUser(user: UpsertUser): Promise<User> {
+    const existing = await this.getUserByEmail(user.email);
+    if (existing) {
+      return await this.updateUser(existing.id, user);
+    } else {
+      return await this.createUser({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl,
+        password: user.password || "",
+      });
+    }
   }
 
   // Amazon Account operations
@@ -206,7 +202,7 @@ export class DatabaseStorage implements IStorage {
     page: number, 
     limit: number, 
     search?: string
-  ): Promise<{ products: Product[]; total: number }> {
+  ): Promise<{ products: Product[]; total: number; page: number; totalPages: number }> {
     const offset = (page - 1) * limit;
     
     let baseConditions = [eq(products.userId, userId)];
@@ -217,7 +213,7 @@ export class DatabaseStorage implements IStorage {
           sql`${products.name} ILIKE ${`%${search}%`}`,
           sql`${products.sku} ILIKE ${`%${search}%`}`,
           sql`${products.internalSku} ILIKE ${`%${search}%`}`
-        )
+        )!
       );
     }
     
@@ -234,9 +230,14 @@ export class DatabaseStorage implements IStorage {
       .from(products)
       .where(and(...baseConditions));
     
+    const total = Number(totalResult?.count || 0);
+    const totalPages = Math.ceil(total / limit);
+    
     return {
       products: productsList,
-      total: Number(totalResult?.count || 0)
+      total,
+      page,
+      totalPages
     };
   }
 
@@ -323,6 +324,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(amazonListings.id, id))
       .returning();
     return updated;
+  }
+
+  async upsertAmazonListing(listing: InsertAmazonListing): Promise<AmazonListing> {
+    const existing = await this.getAmazonListingBySkuAndAccount(listing.sku, listing.amazonAccountId);
+    if (existing) {
+      return await this.updateAmazonListing(existing.id, listing) || existing;
+    } else {
+      return await this.createAmazonListing(listing);
+    }
   }
 
   // Product Cost operations
@@ -490,6 +500,35 @@ class MockStorage implements IStorage {
     return await mockDb.upsertUser(user);
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const user = mockDb['users'].find((u: any) => u.email === email);
+    return user;
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
+    const newUser = { 
+      id: `user-${Date.now()}`, 
+      ...userData, 
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      profileImageUrl: userData.profileImageUrl || null,
+      isEmailVerified: userData.isEmailVerified || null,
+      createdAt: new Date(), 
+      updatedAt: new Date() 
+    };
+    mockDb['users'].push(newUser);
+    return newUser;
+  }
+
+  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const userIndex = mockDb['users'].findIndex((u: any) => u.id === id);
+    if (userIndex >= 0) {
+      mockDb['users'][userIndex] = { ...mockDb['users'][userIndex], ...updates, updatedAt: new Date() };
+      return mockDb['users'][userIndex];
+    }
+    throw new Error('User not found');
+  }
+
   // Amazon Account operations
   async getAmazonAccounts(userId: string): Promise<AmazonAccount[]> {
     return await mockDb.getAmazonAccountsByUserId(userId);
@@ -500,7 +539,13 @@ class MockStorage implements IStorage {
   }
 
   async createAmazonAccount(account: InsertAmazonAccount): Promise<AmazonAccount> {
-    const newAccount = { id: `mock-${Date.now()}`, ...account, createdAt: new Date(), updatedAt: new Date() };
+    const newAccount = { 
+      id: `mock-${Date.now()}`, 
+      ...account, 
+      status: account.status || "pending",
+      createdAt: new Date(), 
+      updatedAt: new Date() 
+    };
     mockDb['amazonAccounts'].push(newAccount);
     return newAccount;
   }
@@ -527,6 +572,47 @@ class MockStorage implements IStorage {
     return await mockDb.upsertAmazonListing(listing);
   }
 
+  async getAmazonListingBySkuAndAccount(sku: string, amazonAccountId: string): Promise<AmazonListing | undefined> {
+    const listing = mockDb['amazonListings'].find((l: any) => l.sku === sku && l.amazonAccountId === amazonAccountId);
+    return listing;
+  }
+
+  async createAmazonListing(listing: InsertAmazonListing): Promise<AmazonListing> {
+    const newListing = { 
+      id: `listing-${Date.now()}`, 
+      ...listing, 
+      status: listing.status || "active",
+      createdAt: new Date(), 
+      updatedAt: new Date() 
+    };
+    mockDb['amazonListings'].push(newListing);
+    return newListing;
+  }
+
+  async updateAmazonListing(id: string, updates: Partial<InsertAmazonListing>): Promise<AmazonListing | undefined> {
+    const listingIndex = mockDb['amazonListings'].findIndex((l: any) => l.id === id);
+    if (listingIndex >= 0) {
+      mockDb['amazonListings'][listingIndex] = { ...mockDb['amazonListings'][listingIndex], ...updates, updatedAt: new Date() };
+      return mockDb['amazonListings'][listingIndex];
+    }
+    return undefined;
+  }
+
+  async getProductsPaginated(userId: string, page: number, limit: number, search?: string): Promise<{ products: Product[]; total: number; page: number; totalPages: number }> {
+    const products = mockDb['products'].filter((p: any) => p.userId === userId);
+    const total = products.length;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+    const paginatedProducts = products.slice(offset, offset + limit);
+    
+    return {
+      products: paginatedProducts,
+      total,
+      page,
+      totalPages
+    };
+  }
+
   // For simplicity, implementing minimal required methods for Amazon sync
   async getProducts(userId: string): Promise<Product[]> { return []; }
   async getProductsByUserId(userId: string): Promise<Product[]> { return []; }
@@ -541,6 +627,7 @@ class MockStorage implements IStorage {
   async deleteProduct(id: string): Promise<boolean> { return false; }
 
   async getProductCosts(productId: string): Promise<ProductCost[]> { return []; }
+  async getCurrentProductCost(productId: string, date?: Date): Promise<ProductCost | undefined> { return undefined; }
   async createProductCost(cost: InsertProductCost): Promise<ProductCost> { 
     throw new Error('Not implemented in mock'); 
   }
