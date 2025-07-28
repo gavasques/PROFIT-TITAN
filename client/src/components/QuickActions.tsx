@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Tags, FileDown, Link } from "lucide-react";
+import { Plus, Tags, FileDown, Link, TestTube } from "lucide-react";
 
 export default function QuickActions() {
   const actions = [
@@ -38,6 +38,15 @@ export default function QuickActions() {
       action: () => {
         // Open marketplace connection modal
         console.log("Open connection modal");
+      }
+    },
+    {
+      id: "oauth-test",
+      title: "Teste OAuth",
+      icon: TestTube,
+      action: () => {
+        // Navigate to OAuth test page
+        window.location.href = "/oauth-test";
       }
     }
   ];

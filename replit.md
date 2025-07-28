@@ -160,7 +160,8 @@ Preferred communication style: Simple, everyday language.
 - **Complete OAuth workflow implemented** following Amazon SP-API documentation
 - **Production domain configured** (profit.guivasques.app) with proper callback URLs
 - **Real Amazon credentials integrated** (LWA App ID, SP-API App ID, Client Secret)
-- **TITAN-CORE app identified** but experiencing MD1000 errors (app not approved/live yet)
+- **OAuth URL fixed for draft apps** - added required `version=beta` parameter for applications in draft state
+- **TITAN-CORE app ready for testing** - OAuth authorization workflow now properly configured
 - **Amazon Developer Central registration** in progress with complete app listing
 - **Support page created** at /support with comprehensive help content and contact info
 - **Professional email configured** (suporte@guivasques.app) for official support channel

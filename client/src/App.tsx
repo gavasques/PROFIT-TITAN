@@ -11,6 +11,7 @@ import Costs from "@/pages/Costs";
 import Sales from "@/pages/Sales";
 import Reports from "@/pages/Reports";
 import Support from "@/pages/Support";
+import OAuthTest from "@/pages/OAuthTest";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/support" component={Support} />
+      <Route path="/oauth-test" component={OAuthTest} />
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (

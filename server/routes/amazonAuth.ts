@@ -44,8 +44,8 @@ export function registerAmazonAuthRoutes(app: Express) {
         });
       }
       
-      // Construct authorization URL
-      const authUrl = `${baseUrl}/apps/authorize/consent?application_id=${applicationId}&state=${state}`;
+      // Construct authorization URL with version=beta for draft apps
+      const authUrl = `${baseUrl}/apps/authorize/consent?application_id=${applicationId}&state=${state}&version=beta`;
       
       console.log('Starting Amazon OAuth flow:', {
         userId,
