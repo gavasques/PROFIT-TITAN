@@ -2,6 +2,8 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   PieChart, 
   Package, 
@@ -16,6 +18,13 @@ import {
 
 export default function Sidebar() {
   const [location, navigate] = useLocation();
+  const { isAuthenticated } = useAuth();
+
+  // Fetch Amazon accounts for marketplace display
+  const { data: amazonAccounts = [] } = useQuery({
+    queryKey: ["/api/amazon-accounts"],
+    enabled: isAuthenticated,
+  });
 
   const menuItems = [
     {
@@ -88,57 +97,71 @@ export default function Sidebar() {
             Marketplaces
           </h3>
           <div className="space-y-2">
-            <div className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-orange-50">
-              <div className="w-6 h-6 bg-orange-600 rounded flex items-center justify-center text-white text-xs font-bold">
-                A
+            {isAuthenticated && amazonAccounts.length > 0 ? (
+              <>
+                {amazonAccounts.map((account: any) => (
+                  <div key={account.id} className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-orange-50">
+                    <div className="w-6 h-6 bg-orange-600 rounded flex items-center justify-center text-white text-xs font-bold">
+                      A
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{account.accountName}</p>
+                      <p className="text-xs text-gray-500">
+                        {account.status === 'connected' ? 'Conectado' : 
+                         account.status === 'error' ? 'Erro' : 
+                         account.status === 'pending' ? 'Pendente' : 'Desconectado'}
+                      </p>
+                    </div>
+                    {account.status === 'connected' ? (
+                      <CheckCircle className="text-green-500" size={16} />
+                    ) : (
+                      <AlertCircle className="text-red-500" size={16} />
+                    )}
+                  </div>
+                ))}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="w-full justify-start border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600"
+                  onClick={() => navigate("/")}
+                >
+                  <Plus size={16} className="mr-2" />
+                  Conectar Marketplace
+                </Button>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-xs text-gray-500 mb-2">Nenhuma conta conectada</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="w-full justify-start border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600"
+                  onClick={() => navigate("/")}
+                >
+                  <Plus size={16} className="mr-2" />
+                  Conectar Marketplace
+                </Button>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Amazon US</p>
-                <p className="text-xs text-gray-500">Conectado</p>
-              </div>
-              <CheckCircle className="text-green-500" size={16} />
-            </div>
-            
-            <div className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-orange-50">
-              <div className="w-6 h-6 bg-orange-600 rounded flex items-center justify-center text-white text-xs font-bold">
-                A
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Amazon BR</p>
-                <p className="text-xs text-gray-500">Conectado</p>
-              </div>
-              <CheckCircle className="text-green-500" size={16} />
-            </div>
-            
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="w-full justify-start border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600"
-            >
-              <Plus size={16} className="mr-2" />
-              Conectar Marketplace
-            </Button>
+            )}
           </div>
         </div>
 
         {/* System Status */}
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Status do Sistema</h4>
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Última Sync:</span>
-              <span className="text-gray-900 font-medium">há 5 min</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Produtos:</span>
-              <span className="text-gray-900 font-medium">1.247</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Vendas hoje:</span>
-              <span className="text-gray-900 font-medium">R$ 12.450</span>
+        {isAuthenticated && amazonAccounts.length > 0 && (
+          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Status do Sistema</h4>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Contas conectadas:</span>
+                <span className="text-gray-900 font-medium">{amazonAccounts.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Status:</span>
+                <span className="text-green-600 font-medium">Operacional</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </nav>
   );

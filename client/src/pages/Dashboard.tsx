@@ -23,9 +23,17 @@ export default function Dashboard() {
   const [showAmazonModal, setShowAmazonModal] = useState(false);
 
   // Fetch Amazon accounts
-  const { data: amazonAccounts = [], isLoading: loadingAccounts } = useQuery({
+  const { data: amazonAccounts = [], isLoading: loadingAccounts, error: accountsError } = useQuery({
     queryKey: ["/api/amazon-accounts"],
     enabled: isAuthenticated,
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        // Redirect to login on unauthorized error
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+      }
+    }
   });
 
   // Redirect to home if not authenticated

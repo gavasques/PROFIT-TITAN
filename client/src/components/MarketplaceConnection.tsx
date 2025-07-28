@@ -17,8 +17,11 @@ export default function MarketplaceConnection() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: amazonAccounts = [], isLoading } = useQuery({
+  const { data: amazonAccounts = [], isLoading, error } = useQuery({
     queryKey: ["/api/amazon-accounts"],
+    onError: (error: Error) => {
+      console.log("MarketplaceConnection query error:", error);
+    }
   });
 
   const createAccountMutation = useMutation({
