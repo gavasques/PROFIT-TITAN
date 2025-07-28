@@ -24,34 +24,33 @@ export function registerAmazonAuthRoutes(app: Express) {
       // Store state in session for validation
       req.session.amazonAuthState = state;
       
-      // Get the appropriate Seller Central URL based on region
-      const sellerCentralUrls: Record<string, string> = {
-        'na': 'https://sellercentral.amazon.com',
-        'eu': 'https://sellercentral.amazon.co.uk',
-        'fe': 'https://sellercentral.amazon.co.jp',
-        'br': 'https://sellercentral.amazon.com.br'
-      };
+      // Get LWA Client ID from environment
+      const clientId = process.env.AMAZON_LWA_APP_ID;
       
-      const baseUrl = sellerCentralUrls[region] || sellerCentralUrls['na'];
-      
-      // Get application ID from environment
-      const applicationId = process.env.AMAZON_SP_API_APP_ID;
-      
-      if (!applicationId) {
-        console.error('AMAZON_SP_API_APP_ID not configured');
+      if (!clientId) {
+        console.error('AMAZON_LWA_APP_ID not configured');
         return res.status(500).json({ 
-          message: "Amazon SP-API application not configured. Please set AMAZON_SP_API_APP_ID environment variable." 
+          message: "Amazon LWA Client ID not configured. Please set AMAZON_LWA_APP_ID environment variable." 
         });
       }
       
-      // Construct authorization URL with version=beta for draft apps
-      const authUrl = `${baseUrl}/apps/authorize/consent?application_id=${applicationId}&state=${state}&version=beta`;
+      // Construct callback URL
+      const redirectUri = `https://profit.guivasques.app/api/amazon-auth/callback`;
       
-      console.log('Starting Amazon OAuth flow:', {
+      // Use official LWA authorization endpoint (not Seller Central)
+      const authUrl = `https://www.amazon.com/ap/oa?` + 
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `scope=profile&` +
+        `response_type=code&` +
+        `state=${encodeURIComponent(state)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}`;
+      
+      console.log('Starting Amazon LWA OAuth flow:', {
         userId,
         accountId,
-        region,
-        authUrl
+        clientId: clientId?.substring(0, 15) + '...',
+        redirectUri,
+        authUrl: authUrl.substring(0, 100) + '...'
       });
       
       res.json({ authUrl });
@@ -69,12 +68,12 @@ export function registerAmazonAuthRoutes(app: Express) {
   app.get('/api/amazon-auth/callback', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { state, spapi_oauth_code, selling_partner_id } = req.query;
+      const { state, code, scope } = req.query;
       
-      console.log('Amazon OAuth callback received:', {
+      console.log('Amazon LWA OAuth callback received:', {
         state: state ? 'present' : 'missing',
-        code: spapi_oauth_code ? 'present' : 'missing',
-        sellerId: selling_partner_id,
+        code: code ? 'present' : 'missing',
+        scope: scope || 'none',
         fullUrl: req.originalUrl
       });
       
@@ -90,7 +89,7 @@ export function registerAmazonAuthRoutes(app: Express) {
       // Decode state to get account info
       const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
       
-      if (!spapi_oauth_code) {
+      if (!code) {
         return res.status(400).json({ message: "Authorization code not provided" });
       }
       
@@ -99,16 +98,18 @@ export function registerAmazonAuthRoutes(app: Express) {
       
       const tokenBody = new URLSearchParams({
         grant_type: 'authorization_code',
-        code: spapi_oauth_code,
+        code: code as string,
         client_id: process.env.AMAZON_LWA_APP_ID || '',
-        client_secret: process.env.AMAZON_LWA_CLIENT_SECRET || ''
+        client_secret: process.env.AMAZON_LWA_CLIENT_SECRET || '',
+        redirect_uri: 'https://profit.guivasques.app/api/amazon-auth/callback'
       });
       
       console.log('Exchanging authorization code for tokens...', {
         tokenUrl,
-        clientId: process.env.AMAZON_LWA_APP_ID,
+        clientId: process.env.AMAZON_LWA_APP_ID?.substring(0, 15) + '...',
         hasClientSecret: !!process.env.AMAZON_LWA_CLIENT_SECRET,
-        codeLength: spapi_oauth_code?.length
+        codeLength: (code as string)?.length,
+        redirectUri: 'https://profit.guivasques.app/api/amazon-auth/callback'
       });
       
       const tokenResponse = await fetch(tokenUrl, {
@@ -150,18 +151,28 @@ export function registerAmazonAuthRoutes(app: Express) {
         });
       }
       
-      console.log('Successfully obtained refresh token');
+      console.log('Successfully obtained LWA tokens:', {
+        hasAccessToken: !!tokenData.access_token,
+        hasRefreshToken: !!tokenData.refresh_token,
+        tokenType: tokenData.token_type,
+        expiresIn: tokenData.expires_in
+      });
       
-      // Update Amazon account with new credentials
+      // For LWA integration, we need to get customer profile to link with account
+      // This is different from SP-API where we get seller_partner_id directly
+      
+      // Store LWA tokens - this gives us customer profile access
+      // Note: This is different from SP-API tokens
       await storage.updateAmazonAccount(stateData.accountId, {
-        sellerId: selling_partner_id,
+        accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
+        tokenExpiresAt: new Date(Date.now() + (tokenData.expires_in * 1000)),
         status: 'connected',
         lastSyncAt: new Date()
       });
       
       // Redirect to success page with account info
-      res.redirect(`/?auth=success&account=${encodeURIComponent(stateData.accountId)}`);
+      res.redirect(`/?auth=lwa_success&account=${encodeURIComponent(stateData.accountId)}`);
       
     } catch (error) {
       console.error("Error handling Amazon callback:", error);
