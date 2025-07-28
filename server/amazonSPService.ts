@@ -32,12 +32,11 @@ export class AmazonSPService {
       credentials: {
         SELLING_PARTNER_APP_CLIENT_ID: credentials.lwa_app_id,
         SELLING_PARTNER_APP_CLIENT_SECRET: credentials.lwa_client_secret,
-        AWS_ACCESS_KEY: credentials.aws_access_key,
-        AWS_SECRET_KEY: credentials.aws_secret_key,
+        AWS_ACCESS_KEY_ID: credentials.aws_access_key,
+        AWS_SECRET_ACCESS_KEY: credentials.aws_secret_key,
         AWS_SELLING_PARTNER_ROLE: credentials.aws_role
       },
       options: {
-        version_fallback: false,
         auto_request_tokens: true,
         debug_log: true,
         use_sandbox: false
@@ -117,23 +116,25 @@ export class AmazonSPService {
         // Get marketplace ID correctly
         const marketplaceId = await this.getMarketplaceId(amazonAccountId);
         
-        // Get inventory items using correct endpoint and parameters
-        const inventoryResponse = await client.callAPI({
-          operation: 'getInventorySummaries',
-          endpoint: 'fbaInventory',
+        // Use Listings Items API to get all products for this seller
+        const listingsResponse = await client.callAPI({
+          operation: 'getListingsItems',
+          endpoint: 'listingsItems',
+          path: {
+            sellerId: account.sellerId || 'A2T1SY156TAAGD', // Use seller ID from database
+          },
           query: {
-            marketplaceIds: marketplaceId, // Required parameter
-            details: true, // Get detailed inventory info
-            granularityType: 'Marketplace',
-            granularityId: marketplaceId
+            marketplaceIds: marketplaceId,
+            pageSize: 20,
+            includedData: 'summaries,attributes,issues,offers,fulfillmentAvailability'
           }
         });
 
-        if (inventoryResponse && inventoryResponse.payload && inventoryResponse.payload.inventorySummaries) {
-          const items = inventoryResponse.payload.inventorySummaries;
+        if (listingsResponse && listingsResponse.items) {
+          const items = listingsResponse.items;
           
           for (const item of items) {
-            const isExisting = await this.processInventoryItem(item, amazonAccountId, userId, existingSkus);
+            const isExisting = await this.processListingItem(item, amazonAccountId, userId, existingSkus);
             if (isExisting) {
               existingCount++;
             } else {
@@ -141,7 +142,7 @@ export class AmazonSPService {
             }
           }
         } else {
-          console.log('No inventory data received or empty response');
+          console.log('No listings data received or empty response');
         }
 
         // Update last sync time
@@ -178,23 +179,44 @@ export class AmazonSPService {
     }
   }
 
-  // Process individual inventory item and create/update products
-  private async processInventoryItem(
+  // Process individual listing item and create/update products
+  private async processListingItem(
     item: any, 
     amazonAccountId: string, 
     userId: string, 
     existingSkus: Set<string>
   ): Promise<boolean> {
-    const sku = item.sellerSku;
+    const sku = item.sku;
+    const asin = item.asin;
     const isExisting = existingSkus.has(sku);
+
+    // Extract product name from summaries or attributes
+    let productName = `Produto ${sku}`;
+    if (item.summaries && item.summaries.length > 0) {
+      const summary = item.summaries[0];
+      if (summary.itemName) {
+        productName = summary.itemName;
+      }
+    }
+
+    // Extract current price from offers
+    let currentPrice = '0.00';
+    if (item.summaries && item.summaries.length > 0) {
+      const summary = item.summaries[0];
+      if (summary.buyBoxPrices && summary.buyBoxPrices.length > 0) {
+        const price = summary.buyBoxPrices[0];
+        if (price.listingPrice) {
+          currentPrice = price.listingPrice.amount.toString();
+        }
+      }
+    }
 
     if (isExisting) {
       // Update existing product
       const existingProduct = await storage.getProductBySku(sku, userId);
       if (existingProduct) {
         await storage.updateProduct(existingProduct.id, {
-          name: item.productName || existingProduct.name,
-          updatedAt: new Date()
+          name: productName
         });
       }
       return true;
@@ -204,19 +226,19 @@ export class AmazonSPService {
         userId,
         sku: sku,
         internalSku: sku,
-        name: item.productName || `Produto ${sku}`,
+        name: productName,
         category: 'Importado da Amazon',
-        description: `Produto importado da Amazon - ASIN: ${item.asin}`
+        description: `Produto importado da Amazon - ASIN: ${asin}`
       });
 
       // Create Amazon listing
       await storage.createAmazonListing({
         productId: newProduct.id,
         amazonAccountId,
-        asin: item.asin,
+        asin: asin,
         sku: sku,
-        status: item.condition === 'NewItem' ? 'Active' : 'Inactive',
-        currentPrice: '0.00', // Price will be updated separately
+        status: item.status || 'Active',
+        currentPrice: currentPrice,
         lastSyncAt: new Date()
       });
 

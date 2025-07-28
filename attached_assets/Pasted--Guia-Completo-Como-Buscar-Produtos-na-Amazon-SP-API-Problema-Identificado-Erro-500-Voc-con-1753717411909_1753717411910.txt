@@ -1,0 +1,319 @@
+# Guia Completo: Como Buscar Produtos na Amazon SP-API
+
+## Problema Identificado: Erro 500
+
+Você conseguiu fazer a autenticação LWA, mas está recebendo erro 500 ao tentar buscar produtos. Baseado na pesquisa da documentação oficial, identifiquei as principais causas e soluções.
+
+## Principais Causas do Erro 500
+
+### 1. **Endpoint Incorreto**
+- ❌ **Erro comum**: Tentar usar endpoint genérico para "listar todos os produtos"
+- ✅ **Correto**: Amazon SP-API não tem endpoint para listar TODOS os produtos de uma vez
+
+### 2. **API Incorreta para o Objetivo**
+- Para buscar **produtos que você vende**: Use **Listings Items API**
+- Para buscar **informações de catálogo**: Use **Catalog Items API** (mas precisa de ASIN específico)
+- Para buscar **inventário**: Use **FBA Inventory API**
+
+### 3. **Parâmetros Obrigatórios Ausentes**
+- Marketplace ID obrigatório
+- Headers de autorização incorretos
+- Rate limiting não respeitado
+
+## Soluções Corretas por Caso de Uso
+
+### 🎯 **CASO 1: Buscar Produtos que Você Vende (Seus Listings)**
+
+**API Correta**: Listings Items API v2021-08-01
+
+**Endpoint**:
+```
+GET /listings/2021-08-01/items/{sellerId}
+```
+
+**Exemplo de Requisição**:
+```http
+GET https://sellingpartnerapi-na.amazon.com/listings/2021-08-01/items/{sellerId}?marketplaceIds=ATVPDKIKX0DER&pageSize=20
+Authorization: Bearer {access_token}
+x-amz-access-token: {access_token}
+```
+
+**Parâmetros Obrigatórios**:
+- `sellerId`: Seu Seller ID
+- `marketplaceIds`: ID do marketplace (ex: ATVPDKIKX0DER para US)
+
+**Código Python Exemplo**:
+```python
+import requests
+
+def get_my_listings(access_token, seller_id, marketplace_id):
+    url = f"https://sellingpartnerapi-na.amazon.com/listings/2021-08-01/items/{seller_id}"
+    
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'x-amz-access-token': access_token,
+        'Content-Type': 'application/json'
+    }
+    
+    params = {
+        'marketplaceIds': marketplace_id,
+        'pageSize': 20
+    }
+    
+    response = requests.get(url, headers=headers, params=params)
+    return response.json()
+```
+
+### 🎯 **CASO 2: Buscar Inventário FBA**
+
+**API Correta**: FBA Inventory API v1
+
+**Endpoint**:
+```
+GET /fba/inventory/v1/summaries
+```
+
+**Exemplo de Requisição**:
+```http
+GET https://sellingpartnerapi-na.amazon.com/fba/inventory/v1/summaries?granularityType=Marketplace&granularityId=ATVPDKIKX0DER&marketplaceIds=ATVPDKIKX0DER
+Authorization: Bearer {access_token}
+x-amz-access-token: {access_token}
+```
+
+**Código Python Exemplo**:
+```python
+def get_fba_inventory(access_token, marketplace_id):
+    url = "https://sellingpartnerapi-na.amazon.com/fba/inventory/v1/summaries"
+    
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'x-amz-access-token': access_token,
+        'Content-Type': 'application/json'
+    }
+    
+    params = {
+        'granularityType': 'Marketplace',
+        'granularityId': marketplace_id,
+        'marketplaceIds': marketplace_id
+    }
+    
+    response = requests.get(url, headers=headers, params=params)
+    return response.json()
+```
+
+### 🎯 **CASO 3: Buscar Informações de Produto Específico**
+
+**API Correta**: Catalog Items API v2022-04-01
+
+**Endpoint**:
+```
+GET /catalog/2022-04-01/items/{asin}
+```
+
+**Exemplo de Requisição**:
+```http
+GET https://sellingpartnerapi-na.amazon.com/catalog/2022-04-01/items/B08N5WRWNW?marketplaceIds=ATVPDKIKX0DER&includedData=attributes,images,productTypes,salesRanks
+Authorization: Bearer {access_token}
+x-amz-access-token: {access_token}
+```
+
+## Checklist de Troubleshooting
+
+### ✅ **1. Verificar Autenticação**
+```python
+# Verificar se o token está válido
+headers = {
+    'Authorization': f'Bearer {access_token}',
+    'x-amz-access-token': access_token,
+    'Content-Type': 'application/json'
+}
+```
+
+### ✅ **2. Verificar Marketplace ID**
+```python
+# IDs de Marketplace mais comuns
+MARKETPLACES = {
+    'US': 'ATVPDKIKX0DER',
+    'CA': 'A2EUQ1WTGCTBG2',
+    'MX': 'A1AM78C64UM0Y8',
+    'BR': 'A2Q3Y263D00KWC',
+    'UK': 'A1F83G8C2ARO7P',
+    'DE': 'A1PA6795UKMFR9',
+    'FR': 'A13V1IB3VIYZZH',
+    'IT': 'APJ6JRA9NG5V4',
+    'ES': 'A1RKKUPIHCS9HS'
+}
+```
+
+### ✅ **3. Verificar Rate Limiting**
+```python
+import time
+
+def make_request_with_retry(url, headers, params, max_retries=3):
+    for attempt in range(max_retries):
+        response = requests.get(url, headers=headers, params=params)
+        
+        if response.status_code == 429:  # Rate limit
+            wait_time = 2 ** attempt  # Exponential backoff
+            time.sleep(wait_time)
+            continue
+            
+        return response
+    
+    return response
+```
+
+### ✅ **4. Verificar Endpoint Correto**
+```python
+# Endpoints por região
+ENDPOINTS = {
+    'NA': 'https://sellingpartnerapi-na.amazon.com',
+    'EU': 'https://sellingpartnerapi-eu.amazon.com',
+    'FE': 'https://sellingpartnerapi-fe.amazon.com'
+}
+```
+
+## Exemplo Completo Funcional
+
+```python
+import requests
+import time
+from datetime import datetime
+
+class AmazonSPAPI:
+    def __init__(self, access_token, seller_id, marketplace_id, region='NA'):
+        self.access_token = access_token
+        self.seller_id = seller_id
+        self.marketplace_id = marketplace_id
+        self.base_url = {
+            'NA': 'https://sellingpartnerapi-na.amazon.com',
+            'EU': 'https://sellingpartnerapi-eu.amazon.com',
+            'FE': 'https://sellingpartnerapi-fe.amazon.com'
+        }[region]
+        
+    def _get_headers(self):
+        return {
+            'Authorization': f'Bearer {self.access_token}',
+            'x-amz-access-token': self.access_token,
+            'Content-Type': 'application/json'
+        }
+    
+    def _make_request(self, endpoint, params=None):
+        url = f"{self.base_url}{endpoint}"
+        headers = self._get_headers()
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            
+            if response.status_code == 200:
+                return {'success': True, 'data': response.json()}
+            elif response.status_code == 429:
+                return {'success': False, 'error': 'Rate limit exceeded'}
+            elif response.status_code == 500:
+                return {'success': False, 'error': 'Internal server error'}
+            else:
+                return {'success': False, 'error': f'HTTP {response.status_code}', 'details': response.text}
+                
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def get_my_listings(self, page_size=20):
+        """Busca seus produtos/listings"""
+        endpoint = f"/listings/2021-08-01/items/{self.seller_id}"
+        params = {
+            'marketplaceIds': self.marketplace_id,
+            'pageSize': page_size
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_fba_inventory(self):
+        """Busca inventário FBA"""
+        endpoint = "/fba/inventory/v1/summaries"
+        params = {
+            'granularityType': 'Marketplace',
+            'granularityId': self.marketplace_id,
+            'marketplaceIds': self.marketplace_id
+        }
+        return self._make_request(endpoint, params)
+    
+    def get_catalog_item(self, asin):
+        """Busca informações de produto específico"""
+        endpoint = f"/catalog/2022-04-01/items/{asin}"
+        params = {
+            'marketplaceIds': self.marketplace_id,
+            'includedData': 'attributes,images,productTypes,salesRanks'
+        }
+        return self._make_request(endpoint, params)
+
+# Uso
+api = AmazonSPAPI(
+    access_token='seu_access_token',
+    seller_id='seu_seller_id',
+    marketplace_id='ATVPDKIKX0DER',  # US marketplace
+    region='NA'
+)
+
+# Buscar seus produtos
+result = api.get_my_listings()
+if result['success']:
+    print("Produtos encontrados:", result['data'])
+else:
+    print("Erro:", result['error'])
+```
+
+## Debugging do Erro 500
+
+### **Passos para Identificar a Causa**:
+
+1. **Verificar logs detalhados**:
+```python
+response = requests.get(url, headers=headers, params=params)
+print(f"Status: {response.status_code}")
+print(f"Headers: {response.headers}")
+print(f"Response: {response.text}")
+```
+
+2. **Testar endpoint mais simples primeiro**:
+```python
+# Teste com endpoint de teste
+test_url = f"{base_url}/listings/2021-08-01/items/{seller_id}"
+```
+
+3. **Verificar se a aplicação está aprovada**:
+- Status "Draft" pode causar alguns erros
+- Verificar se tem todas as permissões necessárias
+
+4. **Verificar rate limits**:
+- Listings API: 5 requests per second
+- FBA Inventory API: 2 requests per second
+- Catalog Items API: 2 requests per second
+
+## Marketplace IDs Importantes
+
+```python
+MARKETPLACE_IDS = {
+    'US': 'ATVPDKIKX0DER',
+    'Canada': 'A2EUQ1WTGCTBG2',
+    'Mexico': 'A1AM78C64UM0Y8',
+    'Brazil': 'A2Q3Y263D00KWC',
+    'UK': 'A1F83G8C2ARO7P',
+    'Germany': 'A1PA6795UKMFR9',
+    'France': 'A13V1IB3VIYZZH',
+    'Italy': 'APJ6JRA9NG5V4',
+    'Spain': 'A1RKKUPIHCS9HS',
+    'Japan': 'A1VC38T7YXB528',
+    'Australia': 'A39IBJ37TRP1C6',
+    'India': 'A21TJRUUN4KGV'
+}
+```
+
+## Próximos Passos
+
+1. **Identifique seu objetivo específico** (listar seus produtos, inventário, ou informações de catálogo)
+2. **Use a API correta** conforme o caso de uso
+3. **Implemente o código exemplo** correspondente
+4. **Teste com rate limiting** adequado
+5. **Monitore os logs** para identificar problemas específicos
+
+Se o erro 500 persistir mesmo com a implementação correta, pode ser um problema temporário da Amazon que requer contato com o suporte técnico deles.
+

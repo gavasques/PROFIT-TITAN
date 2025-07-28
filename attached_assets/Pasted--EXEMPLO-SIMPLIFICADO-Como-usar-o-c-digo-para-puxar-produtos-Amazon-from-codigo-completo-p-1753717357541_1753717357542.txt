@@ -1,0 +1,103 @@
+"""
+EXEMPLO SIMPLIFICADO - Como usar o código para puxar produtos Amazon
+"""
+
+from codigo_completo_produtos_amazon import AmazonProductsAPI
+
+# 1. CONFIGURAR SUAS CREDENCIAIS
+ACCESS_TOKEN = "Atz.r|IwEBIA..."  # Seu token de acesso
+SELLER_ID = "A1EXAMPLE123"        # Seu Seller ID
+MARKETPLACE_ID = "ATVPDKIKX0DER"  # US = ATVPDKIKX0DER, BR = A2Q3Y263D00KWC
+
+# 2. INICIALIZAR A API
+api = AmazonProductsAPI(
+    access_token=ACCESS_TOKEN,
+    seller_id=SELLER_ID,
+    marketplace_id=MARKETPLACE_ID,
+    region="NA"  # NA para US/CA/MX, EU para Europa, FE para Ásia
+)
+
+# 3. BUSCAR TODOS OS DADOS DOS PRODUTOS
+print("🚀 Iniciando busca de produtos...")
+result = api.get_complete_product_data()
+
+if result['success']:
+    products = result['data']
+    print(f"✅ Sucesso! Encontrados {len(products)} produtos")
+    
+    # 4. PROCESSAR E ORGANIZAR OS DADOS
+    organized_products = []
+    for product in products:
+        info = api.extract_product_info(product)
+        organized_products.append(info)
+        
+        # Mostrar informações do produto
+        print(f"\n📦 Produto: {info['sku']}")
+        print(f"   ASIN: {info['asin']}")
+        print(f"   Título: {info['title']}")
+        print(f"   Preço: {info['current_price']}")
+        print(f"   Estoque: {info['stock_info']['sellable_quantity']}")
+        print(f"   Imagens: {len(info['images'])}")
+        
+        # Mostrar URLs das imagens
+        if info['images']:
+            print(f"   Primeira imagem: {info['images'][0]['url']}")
+    
+    # 5. SALVAR EM ARQUIVO JSON
+    import json
+    with open('meus_produtos_amazon.json', 'w', encoding='utf-8') as f:
+        json.dump(organized_products, f, indent=2, ensure_ascii=False)
+    
+    print(f"\n💾 Dados salvos em 'meus_produtos_amazon.json'")
+    
+else:
+    print(f"❌ Erro: {result['error']}")
+    
+    # Dicas para resolver erros comuns
+    if "500" in str(result.get('error', '')):
+        print("\n🔧 DICAS PARA RESOLVER ERRO 500:")
+        print("1. Verifique se o SELLER_ID está correto")
+        print("2. Verifique se o MARKETPLACE_ID está correto")
+        print("3. Verifique se sua aplicação tem as permissões necessárias")
+        print("4. Tente novamente em alguns minutos (pode ser temporário)")
+    
+    elif "401" in str(result.get('error', '')):
+        print("\n🔧 ERRO DE AUTENTICAÇÃO:")
+        print("1. Verifique se o ACCESS_TOKEN está válido")
+        print("2. Gere um novo token se necessário")
+        print("3. Verifique se a aplicação está aprovada")
+
+# EXEMPLO DE COMO ACESSAR DADOS ESPECÍFICOS
+"""
+Estrutura dos dados retornados:
+
+{
+    "sku": "MEU-SKU-123",
+    "asin": "B08EXAMPLE",
+    "title": "Nome do Produto",
+    "description": "Descrição completa...",
+    "brand": "Minha Marca",
+    "images": [
+        {
+            "url": "https://m.media-amazon.com/images/...",
+            "height": 500,
+            "width": 500
+        }
+    ],
+    "current_price": {
+        "amount": 29.99,
+        "currencyCode": "USD"
+    },
+    "stock_info": {
+        "sellable_quantity": 100,
+        "inbound_quantity": 50,
+        "unsellable_quantity": 2
+    },
+    "attributes": {
+        "item_name": [...],
+        "description": [...],
+        "brand": [...]
+    }
+}
+"""
+

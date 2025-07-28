@@ -1,0 +1,106 @@
+"""
+IDs de Marketplace Amazon por País/Região
+Use estes IDs no parâmetro marketplace_id
+"""
+
+MARKETPLACE_IDS = {
+    # América do Norte
+    'US': 'ATVPDKIKX0DER',      # Estados Unidos
+    'CA': 'A2EUQ1WTGCTBG2',     # Canadá  
+    'MX': 'A1AM78C64UM0Y8',     # México
+    'BR': 'A2Q3Y263D00KWC',     # Brasil
+    
+    # Europa
+    'UK': 'A1F83G8C2ARO7P',     # Reino Unido
+    'DE': 'A1PA6795UKMFR9',     # Alemanha
+    'FR': 'A13V1IB3VIYZZH',     # França
+    'IT': 'APJ6JRA9NG5V4',      # Itália
+    'ES': 'A1RKKUPIHCS9HS',     # Espanha
+    'NL': 'A1805IZSGTT6HS',     # Holanda
+    'PL': 'A1C3SOZRARQ6R3',     # Polônia
+    'SE': 'A2NODRKZP88ZB9',     # Suécia
+    'TR': 'A33AVAJ2PDY3EV',     # Turquia
+    'BE': 'AMEN7PMS3EDWL',      # Bélgica
+    
+    # Ásia-Pacífico
+    'JP': 'A1VC38T7YXB528',     # Japão
+    'AU': 'A39IBJ37TRP1C6',     # Austrália
+    'SG': 'A19VAU5U5O7RUS',     # Singapura
+    'IN': 'A21TJRUUN4KGV',      # Índia
+    'AE': 'A2VIGQ35RCS4UG',     # Emirados Árabes Unidos
+    'SA': 'A17E79C6D8DWNP',     # Arábia Saudita
+    'EG': 'ARBP9OOSHTCHU'       # Egito
+}
+
+# Regiões para endpoints
+REGIONS = {
+    'NA': ['US', 'CA', 'MX', 'BR'],                    # América do Norte
+    'EU': ['UK', 'DE', 'FR', 'IT', 'ES', 'NL', 'PL', 'SE', 'TR', 'BE', 'AE', 'SA', 'EG'],  # Europa/Oriente Médio/África
+    'FE': ['JP', 'AU', 'SG', 'IN']                     # Extremo Oriente
+}
+
+def get_marketplace_id(country_code: str) -> str:
+    """
+    Retorna o Marketplace ID para um código de país
+    
+    Args:
+        country_code: Código do país (ex: 'US', 'BR', 'UK')
+    
+    Returns:
+        Marketplace ID correspondente
+    """
+    return MARKETPLACE_IDS.get(country_code.upper())
+
+def get_region(country_code: str) -> str:
+    """
+    Retorna a região para um código de país
+    
+    Args:
+        country_code: Código do país (ex: 'US', 'BR', 'UK')
+    
+    Returns:
+        Região correspondente ('NA', 'EU', 'FE')
+    """
+    country_code = country_code.upper()
+    
+    for region, countries in REGIONS.items():
+        if country_code in countries:
+            return region
+    
+    return None
+
+def get_endpoint_url(country_code: str) -> str:
+    """
+    Retorna a URL do endpoint para um código de país
+    
+    Args:
+        country_code: Código do país (ex: 'US', 'BR', 'UK')
+    
+    Returns:
+        URL do endpoint correspondente
+    """
+    region = get_region(country_code)
+    
+    endpoints = {
+        'NA': 'https://sellingpartnerapi-na.amazon.com',
+        'EU': 'https://sellingpartnerapi-eu.amazon.com',
+        'FE': 'https://sellingpartnerapi-fe.amazon.com'
+    }
+    
+    return endpoints.get(region)
+
+# Exemplo de uso
+if __name__ == "__main__":
+    # Exemplos
+    print("Exemplos de uso:")
+    print(f"Brasil - ID: {get_marketplace_id('BR')}, Região: {get_region('BR')}")
+    print(f"EUA - ID: {get_marketplace_id('US')}, Região: {get_region('US')}")
+    print(f"Reino Unido - ID: {get_marketplace_id('UK')}, Região: {get_region('UK')}")
+    print(f"Japão - ID: {get_marketplace_id('JP')}, Região: {get_region('JP')}")
+    
+    print(f"\nEndpoints:")
+    print(f"Brasil: {get_endpoint_url('BR')}")
+    print(f"EUA: {get_endpoint_url('US')}")
+    print(f"Reino Unido: {get_endpoint_url('UK')}")
+    print(f"Japão: {get_endpoint_url('JP')}")
+

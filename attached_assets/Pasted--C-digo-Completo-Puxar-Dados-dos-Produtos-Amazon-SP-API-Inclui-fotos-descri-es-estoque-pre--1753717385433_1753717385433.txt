@@ -1,0 +1,382 @@
+"""
+Código Completo: Puxar Dados dos Produtos Amazon SP-API
+Inclui: fotos, descrições, estoque, preços, e todas as informações
+"""
+
+import requests
+import time
+import json
+from datetime import datetime
+from typing import Dict, List, Optional
+
+class AmazonProductsAPI:
+    def __init__(self, access_token: str, seller_id: str, marketplace_id: str, region: str = 'NA'):
+        """
+        Inicializa a classe para puxar dados completos dos produtos Amazon
+        
+        Args:
+            access_token: Token de acesso da SP-API
+            seller_id: ID do vendedor
+            marketplace_id: ID do marketplace (ex: ATVPDKIKX0DER para US)
+            region: Região (NA, EU, FE)
+        """
+        self.access_token = access_token
+        self.seller_id = seller_id
+        self.marketplace_id = marketplace_id
+        
+        # Endpoints por região
+        self.base_url = {
+            'NA': 'https://sellingpartnerapi-na.amazon.com',
+            'EU': 'https://sellingpartnerapi-eu.amazon.com', 
+            'FE': 'https://sellingpartnerapi-fe.amazon.com'
+        }[region]
+        
+        # Rate limits por API (requests per second)
+        self.rate_limits = {
+            'listings': 5,
+            'inventory': 2,
+            'catalog': 2,
+            'pricing': 0.5
+        }
+        
+    def _get_headers(self) -> Dict[str, str]:
+        """Retorna headers padrão para requisições"""
+        return {
+            'Authorization': f'Bearer {self.access_token}',
+            'x-amz-access-token': self.access_token,
+            'Content-Type': 'application/json'
+        }
+    
+    def _make_request(self, endpoint: str, params: Dict = None, api_type: str = 'listings') -> Dict:
+        """
+        Faz requisição com rate limiting e tratamento de erros
+        
+        Args:
+            endpoint: Endpoint da API
+            params: Parâmetros da requisição
+            api_type: Tipo da API para rate limiting
+        """
+        url = f"{self.base_url}{endpoint}"
+        headers = self._get_headers()
+        
+        # Rate limiting
+        wait_time = 1.0 / self.rate_limits[api_type]
+        time.sleep(wait_time)
+        
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            
+            if response.status_code == 200:
+                return {'success': True, 'data': response.json()}
+            elif response.status_code == 429:
+                # Rate limit exceeded - wait and retry
+                time.sleep(2)
+                return self._make_request(endpoint, params, api_type)
+            elif response.status_code == 500:
+                return {'success': False, 'error': 'Internal server error', 'details': response.text}
+            else:
+                return {
+                    'success': False, 
+                    'error': f'HTTP {response.status_code}',
+                    'details': response.text
+                }
+                
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def get_all_listings(self) -> Dict:
+        """
+        PASSO 1: Busca todos os produtos/listings da conta
+        Retorna: SKUs, ASINs, status dos produtos
+        """
+        print("🔍 Buscando lista de produtos...")
+        
+        endpoint = f"/listings/2021-08-01/items/{self.seller_id}"
+        params = {
+            'marketplaceIds': self.marketplace_id,
+            'pageSize': 20,
+            'includedData': 'summaries,attributes,issues,offers,fulfillmentAvailability'
+        }
+        
+        all_listings = []
+        next_token = None
+        
+        while True:
+            if next_token:
+                params['pageToken'] = next_token
+                
+            result = self._make_request(endpoint, params, 'listings')
+            
+            if not result['success']:
+                return result
+                
+            data = result['data']
+            
+            if 'items' in data:
+                all_listings.extend(data['items'])
+                print(f"   📦 Encontrados {len(data['items'])} produtos nesta página")
+            
+            # Verificar se há próxima página
+            if 'pagination' in data and 'nextToken' in data['pagination']:
+                next_token = data['pagination']['nextToken']
+            else:
+                break
+        
+        print(f"✅ Total de produtos encontrados: {len(all_listings)}")
+        return {'success': True, 'data': all_listings}
+    
+    def get_inventory_details(self) -> Dict:
+        """
+        PASSO 2: Busca detalhes de estoque FBA
+        Retorna: quantidades, status de estoque
+        """
+        print("📊 Buscando dados de estoque...")
+        
+        endpoint = "/fba/inventory/v1/summaries"
+        params = {
+            'granularityType': 'Marketplace',
+            'granularityId': self.marketplace_id,
+            'marketplaceIds': self.marketplace_id,
+            'details': 'true'
+        }
+        
+        result = self._make_request(endpoint, params, 'inventory')
+        
+        if result['success']:
+            inventory_data = result['data'].get('inventorySummaries', [])
+            print(f"✅ Dados de estoque obtidos para {len(inventory_data)} produtos")
+            return {'success': True, 'data': inventory_data}
+        
+        return result
+    
+    def get_catalog_details(self, asin: str) -> Dict:
+        """
+        PASSO 3: Busca detalhes completos do catálogo para um ASIN
+        Retorna: fotos, descrições, especificações
+        """
+        endpoint = f"/catalog/2022-04-01/items/{asin}"
+        params = {
+            'marketplaceIds': self.marketplace_id,
+            'includedData': 'attributes,images,productTypes,salesRanks,summaries,variations,vendorDetails'
+        }
+        
+        result = self._make_request(endpoint, params, 'catalog')
+        return result
+    
+    def get_pricing_details(self, asin: str, item_condition: str = 'New') -> Dict:
+        """
+        PASSO 4: Busca informações de preço
+        Retorna: preços atuais, histórico
+        """
+        endpoint = f"/products/pricing/v0/items/{asin}/offers"
+        params = {
+            'MarketplaceId': self.marketplace_id,
+            'ItemCondition': item_condition
+        }
+        
+        result = self._make_request(endpoint, params, 'pricing')
+        return result
+    
+    def get_complete_product_data(self) -> Dict:
+        """
+        FUNÇÃO PRINCIPAL: Combina todas as APIs para dados completos
+        """
+        print("🚀 Iniciando busca completa de dados dos produtos...")
+        
+        # PASSO 1: Buscar todos os listings
+        listings_result = self.get_all_listings()
+        if not listings_result['success']:
+            return listings_result
+        
+        listings = listings_result['data']
+        
+        # PASSO 2: Buscar dados de inventário
+        inventory_result = self.get_inventory_details()
+        inventory_data = {}
+        
+        if inventory_result['success']:
+            # Indexar por ASIN para busca rápida
+            for item in inventory_result['data']:
+                asin = item.get('asin')
+                if asin:
+                    inventory_data[asin] = item
+        
+        # PASSO 3: Combinar dados e buscar detalhes do catálogo
+        complete_products = []
+        
+        for i, listing in enumerate(listings):
+            print(f"🔄 Processando produto {i+1}/{len(listings)}...")
+            
+            # Dados básicos do listing
+            asin = listing.get('asin')
+            sku = listing.get('sku')
+            
+            if not asin:
+                continue
+            
+            # Estrutura base do produto
+            product_data = {
+                'sku': sku,
+                'asin': asin,
+                'listing_data': listing,
+                'inventory_data': inventory_data.get(asin, {}),
+                'catalog_data': {},
+                'pricing_data': {},
+                'last_updated': datetime.now().isoformat()
+            }
+            
+            # Buscar detalhes do catálogo (fotos, descrições, etc.)
+            catalog_result = self.get_catalog_details(asin)
+            if catalog_result['success']:
+                product_data['catalog_data'] = catalog_result['data']
+            else:
+                print(f"   ⚠️ Erro ao buscar catálogo para {asin}: {catalog_result.get('error')}")
+            
+            # Buscar dados de preço
+            pricing_result = self.get_pricing_details(asin)
+            if pricing_result['success']:
+                product_data['pricing_data'] = pricing_result['data']
+            else:
+                print(f"   ⚠️ Erro ao buscar preços para {asin}: {pricing_result.get('error')}")
+            
+            complete_products.append(product_data)
+            
+            # Pequena pausa para evitar rate limiting
+            time.sleep(0.5)
+        
+        print(f"✅ Processamento completo! {len(complete_products)} produtos processados")
+        
+        return {
+            'success': True,
+            'data': complete_products,
+            'summary': {
+                'total_products': len(complete_products),
+                'processed_at': datetime.now().isoformat(),
+                'marketplace_id': self.marketplace_id,
+                'seller_id': self.seller_id
+            }
+        }
+    
+    def extract_product_info(self, product_data: Dict) -> Dict:
+        """
+        Extrai informações específicas em formato organizado
+        """
+        listing = product_data.get('listing_data', {})
+        catalog = product_data.get('catalog_data', {})
+        inventory = product_data.get('inventory_data', {})
+        
+        # Extrair imagens
+        images = []
+        if 'items' in catalog and catalog['items']:
+            item = catalog['items'][0]
+            if 'images' in item:
+                for image_group in item['images']:
+                    if 'images' in image_group:
+                        for img in image_group['images']:
+                            if 'link' in img:
+                                images.append({
+                                    'url': img['link'],
+                                    'height': img.get('height'),
+                                    'width': img.get('width')
+                                })
+        
+        # Extrair atributos/descrição
+        attributes = {}
+        if 'items' in catalog and catalog['items']:
+            item = catalog['items'][0]
+            if 'attributes' in item:
+                attributes = item['attributes']
+        
+        # Extrair dados de estoque
+        stock_info = {
+            'sellable_quantity': inventory.get('sellableQuantity', 0),
+            'inbound_quantity': inventory.get('inboundWorkingQuantity', 0),
+            'inbound_shipped_quantity': inventory.get('inboundShippedQuantity', 0),
+            'unsellable_quantity': inventory.get('unsellableQuantity', 0),
+            'reserved_quantity': inventory.get('reservedQuantity', 0)
+        }
+        
+        # Extrair preço atual
+        current_price = None
+        if 'summaries' in listing and listing['summaries']:
+            for summary in listing['summaries']:
+                if 'mainImage' in summary:  # Indica que é o produto principal
+                    if 'buyBoxPrices' in summary:
+                        for price_info in summary['buyBoxPrices']:
+                            if 'listingPrice' in price_info:
+                                current_price = price_info['listingPrice']
+                                break
+        
+        return {
+            'sku': product_data.get('sku'),
+            'asin': product_data.get('asin'),
+            'title': attributes.get('item_name', [{}])[0].get('value') if 'item_name' in attributes else None,
+            'description': attributes.get('description', [{}])[0].get('value') if 'description' in attributes else None,
+            'brand': attributes.get('brand', [{}])[0].get('value') if 'brand' in attributes else None,
+            'images': images,
+            'current_price': current_price,
+            'stock_info': stock_info,
+            'attributes': attributes,
+            'listing_status': listing.get('status'),
+            'last_updated': product_data.get('last_updated')
+        }
+
+def save_products_to_file(products_data: List[Dict], filename: str = 'amazon_products.json'):
+    """Salva os dados dos produtos em arquivo JSON"""
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(products_data, f, indent=2, ensure_ascii=False)
+    print(f"💾 Dados salvos em {filename}")
+
+# EXEMPLO DE USO
+if __name__ == "__main__":
+    # Configurações - SUBSTITUA PELOS SEUS DADOS
+    ACCESS_TOKEN = "seu_access_token_aqui"
+    SELLER_ID = "seu_seller_id_aqui"
+    MARKETPLACE_ID = "ATVPDKIKX0DER"  # US marketplace
+    REGION = "NA"
+    
+    # Inicializar API
+    api = AmazonProductsAPI(
+        access_token=ACCESS_TOKEN,
+        seller_id=SELLER_ID,
+        marketplace_id=MARKETPLACE_ID,
+        region=REGION
+    )
+    
+    # Buscar dados completos
+    result = api.get_complete_product_data()
+    
+    if result['success']:
+        products = result['data']
+        
+        # Extrair informações organizadas
+        organized_products = []
+        for product in products:
+            organized_info = api.extract_product_info(product)
+            organized_products.append(organized_info)
+        
+        # Salvar em arquivo
+        save_products_to_file(organized_products)
+        
+        # Mostrar resumo
+        print(f"\n📊 RESUMO:")
+        print(f"   Total de produtos: {len(organized_products)}")
+        print(f"   Produtos com imagens: {sum(1 for p in organized_products if p['images'])}")
+        print(f"   Produtos com estoque: {sum(1 for p in organized_products if p['stock_info']['sellable_quantity'] > 0)}")
+        
+        # Mostrar exemplo do primeiro produto
+        if organized_products:
+            print(f"\n📦 EXEMPLO - Primeiro produto:")
+            first_product = organized_products[0]
+            print(f"   SKU: {first_product['sku']}")
+            print(f"   ASIN: {first_product['asin']}")
+            print(f"   Título: {first_product['title']}")
+            print(f"   Preço: {first_product['current_price']}")
+            print(f"   Estoque: {first_product['stock_info']['sellable_quantity']}")
+            print(f"   Imagens: {len(first_product['images'])}")
+    
+    else:
+        print(f"❌ Erro: {result['error']}")
+        if 'details' in result:
+            print(f"   Detalhes: {result['details']}")
+
