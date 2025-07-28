@@ -210,15 +210,15 @@ export class AmazonSPService {
             console.log('📋 Using marketplace ID:', marketplaceId);
             
             const listingsResponse = await client.callAPI({
-              operation: 'getListingsItems',
-              endpoint: 'listingsItems',
+              operation: 'searchListingsItems',
+              endpoint: 'listings',
               path: {
                 sellerId: sellerId,
               },
               query: {
                 marketplaceIds: [marketplaceId],
                 pageSize: 20,
-                includedData: 'summaries,attributes,issues,offers,fulfillmentAvailability'
+                includedData: ['summaries','attributes','issues','offers','fulfillmentAvailability']
               }
             });
 
