@@ -32,15 +32,15 @@ export class AmazonSPService {
       credentials: {
         SELLING_PARTNER_APP_CLIENT_ID: credentials.lwa_app_id,
         SELLING_PARTNER_APP_CLIENT_SECRET: credentials.lwa_client_secret,
-        AWS_ACCESS_KEY_ID: credentials.aws_access_key,
-        AWS_SECRET_ACCESS_KEY: credentials.aws_secret_key,
+        AWS_ACCESS_KEY: credentials.aws_access_key,
+        AWS_SECRET_KEY: credentials.aws_secret_key,
         AWS_SELLING_PARTNER_ROLE: credentials.aws_role
       },
       options: {
-        version: 'beta', // Required for draft applications
-        use_sandbox: false,
+        version_fallback: false,
         auto_request_tokens: true,
-        debug_log: true
+        debug_log: true,
+        use_sandbox: false
       }
     });
   }
@@ -114,29 +114,34 @@ export class AmazonSPService {
         let existingCount = 0;
         let newCount = 0;
         
-        // Get inventory items (this gives us the actual SKUs from seller's inventory)
+        // Get marketplace ID correctly
+        const marketplaceId = await this.getMarketplaceId(amazonAccountId);
+        
+        // Get inventory items using correct endpoint and parameters
         const inventoryResponse = await client.callAPI({
           operation: 'getInventorySummaries',
           endpoint: 'fbaInventory',
           query: {
-            details: true,
+            marketplaceIds: marketplaceId, // Required parameter
+            details: true, // Get detailed inventory info
             granularityType: 'Marketplace',
-            granularityId: await this.getMarketplaceId(amazonAccountId),
-            marketplaceIds: [await this.getMarketplaceId(amazonAccountId)]
+            granularityId: marketplaceId
           }
         });
 
-        if (inventoryResponse.success && inventoryResponse.result) {
-          const items = inventoryResponse.result.inventorySummaries || [];
+        if (inventoryResponse && inventoryResponse.payload && inventoryResponse.payload.inventorySummaries) {
+          const items = inventoryResponse.payload.inventorySummaries;
           
           for (const item of items) {
-            const isExisting = await this.processProductWithMatch(item, amazonAccountId, userId, existingSkus);
+            const isExisting = await this.processInventoryItem(item, amazonAccountId, userId, existingSkus);
             if (isExisting) {
               existingCount++;
             } else {
               newCount++;
             }
           }
+        } else {
+          console.log('No inventory data received or empty response');
         }
 
         // Update last sync time
@@ -170,6 +175,52 @@ export class AmazonSPService {
         lastSyncAt: new Date()
       });
       throw error;
+    }
+  }
+
+  // Process individual inventory item and create/update products
+  private async processInventoryItem(
+    item: any, 
+    amazonAccountId: string, 
+    userId: string, 
+    existingSkus: Set<string>
+  ): Promise<boolean> {
+    const sku = item.sellerSku;
+    const isExisting = existingSkus.has(sku);
+
+    if (isExisting) {
+      // Update existing product
+      const existingProduct = await storage.getProductBySku(sku, userId);
+      if (existingProduct) {
+        await storage.updateProduct(existingProduct.id, {
+          name: item.productName || existingProduct.name,
+          updatedAt: new Date()
+        });
+      }
+      return true;
+    } else {
+      // Create new product
+      const newProduct = await storage.createProduct({
+        userId,
+        sku: sku,
+        internalSku: sku,
+        name: item.productName || `Produto ${sku}`,
+        category: 'Importado da Amazon',
+        description: `Produto importado da Amazon - ASIN: ${item.asin}`
+      });
+
+      // Create Amazon listing
+      await storage.createAmazonListing({
+        productId: newProduct.id,
+        amazonAccountId,
+        asin: item.asin,
+        sku: sku,
+        status: item.condition === 'NewItem' ? 'Active' : 'Inactive',
+        currentPrice: '0.00', // Price will be updated separately
+        lastSyncAt: new Date()
+      });
+
+      return false;
     }
   }
 
