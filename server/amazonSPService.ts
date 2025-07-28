@@ -36,7 +36,12 @@ export class AmazonSPService {
         AWS_SECRET_ACCESS_KEY: credentials.aws_secret_key,
         AWS_SELLING_PARTNER_ROLE: credentials.aws_role
       },
-      sandbox: true // Enable sandbox mode for testing
+      options: {
+        version: 'beta', // Required for draft applications
+        use_sandbox: false,
+        auto_request_tokens: true,
+        debug_log: true
+      }
     });
   }
 
