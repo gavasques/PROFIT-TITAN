@@ -164,6 +164,8 @@ Preferred communication style: Simple, everyday language.
 - **OAuth workflow tested with real credentials** - code successfully obtained but token exchange failed due to "Client authentication failed"
 - **LWA credentials issue identified** - redirect URI or client credentials need configuration in Amazon Developer Console
 - **Diagnostic page created** at /oauth-diagnostic with step-by-step troubleshooting guide
+- **Amazon LWA documentation reviewed** - identified exact configuration requirements for redirect URIs and allowed origins
+- **LWA setup guide created** at /lwa-setup with complete step-by-step configuration instructions
 - **Amazon Developer Central registration** in progress with complete app listing
 - **Support page created** at /support with comprehensive help content and contact info
 - **Professional email configured** (suporte@guivasques.app) for official support channel

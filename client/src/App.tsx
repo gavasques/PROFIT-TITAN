@@ -13,6 +13,7 @@ import Reports from "@/pages/Reports";
 import Support from "@/pages/Support";
 import OAuthTest from "@/pages/OAuthTest";
 import OAuthDiagnostic from "@/pages/OAuthDiagnostic";
+import LWASetupGuide from "@/pages/LWASetupGuide";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/support" component={Support} />
       <Route path="/oauth-test" component={OAuthTest} />
       <Route path="/oauth-diagnostic" component={OAuthDiagnostic} />
+      <Route path="/lwa-setup" component={LWASetupGuide} />
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (

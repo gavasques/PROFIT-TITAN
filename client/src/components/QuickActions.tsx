@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Tags, FileDown, Link, TestTube } from "lucide-react";
+import { Plus, Tags, FileDown, Link, TestTube, Settings } from "lucide-react";
 
 export default function QuickActions() {
   const actions = [
@@ -47,6 +47,15 @@ export default function QuickActions() {
       action: () => {
         // Navigate to OAuth test page
         window.location.href = "/oauth-test";
+      }
+    },
+    {
+      id: "lwa-setup",
+      title: "Guia LWA",
+      icon: Settings,
+      action: () => {
+        // Navigate to LWA setup guide
+        window.location.href = "/lwa-setup";
       }
     }
   ];
