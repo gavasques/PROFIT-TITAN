@@ -261,6 +261,38 @@ Preferred communication style: Simple, everyday language.
 - **Connection Testing**: Marketplace participation verification
 - **Credential Validation**: LWA token refresh testing
 
-The system is fully operational in production with **significantly improved** Amazon SP-API integration. The recent fixes have resolved critical synchronization issues that were preventing product data retrieval. OAuth authorization continues to work correctly, and the system now successfully processes real marketplace data from connected Amazon accounts with enhanced reliability and error handling.
+### Critical Bug Fixes - Token Persistence & Error 500 Resolution (January 2025)
+- **Error 500 Fixed in Product Sync** - Resolved critical synchronization failures with comprehensive error handling
+- **Token Persistence Issue Resolved** - Fixed refresh token not being maintained, requiring constant reconnection
+- **Enhanced Credential Validation** - Added 15-second timeout to prevent hanging on token validation
+- **Robust Error Handling** - Implemented detailed logging and graceful fallback between API endpoints
+- **Automatic Token Refresh** - System now automatically refreshes expired access tokens before SP-API calls
+- **Access Token Storage** - Properly store access tokens with expiration timestamps for better persistence
+- **Dual API Strategy Enhanced** - Improved error handling for both FBA Inventory and Listings APIs with specific error messages
+- **Individual Item Processing** - Added try/catch for each product item to prevent single failures from breaking entire sync
+- **Debug Logging Improved** - Enhanced console logging with detailed API response information for troubleshooting
+
+### Token Management Improvements (January 2025)
+- **Expiration Tracking** - Access tokens now stored with proper expiration timestamps
+- **Automatic Refresh Logic** - Client automatically checks token expiration before API calls
+- **Persistent Authentication** - Users no longer need to constantly reconnect Amazon accounts
+- **Enhanced OAuth Flow** - OAuth callback now properly saves both access and refresh tokens with expiration data
+- **Client Cache Management** - SP-API client cache cleared automatically after token refresh
+
+### Error Handling & Debugging Enhancements (January 2025)
+- **Timeout Protection** - Added 15-second timeout to token refresh calls to prevent indefinite hanging
+- **Detailed API Response Logging** - Console logs now show success status, data availability, and item counts
+- **Graceful Degradation** - System attempts FBA Inventory API first, falls back to Listings API with specific error messages
+- **Individual Item Error Isolation** - Processing errors for single products no longer break entire synchronization
+- **Comprehensive Error Messages** - Users receive specific error information instead of generic 500 errors
+
+## Memory Notes
+- **Always update replit.md** when making changes to document system evolution
+- **User prefers simple language** - Avoid technical jargon in explanations
+- **Token persistence was critical issue** - Users had to reconnect frequently before fix
+- **Error 500 was blocking product sync** - System now provides detailed error feedback
+- **Debugging enhanced with emoji logs** - Makes troubleshooting easier in console
+
+The system is fully operational in production with **significantly improved** Amazon SP-API integration. The recent fixes have resolved critical synchronization issues and token persistence problems that were preventing reliable product data retrieval. OAuth authorization continues to work correctly, and the system now successfully processes real marketplace data from connected Amazon accounts with enhanced reliability, automatic token management, and comprehensive error handling.
 
 The system is designed to be deployed on Replit's infrastructure but can be adapted for other hosting environments with minimal configuration changes. The architecture supports horizontal scaling through database connection pooling and stateless API design.
