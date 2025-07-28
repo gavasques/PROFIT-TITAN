@@ -32,10 +32,10 @@ export class AmazonSPService {
       credentials: {
         SELLING_PARTNER_APP_CLIENT_ID: credentials.lwa_app_id,
         SELLING_PARTNER_APP_CLIENT_SECRET: credentials.lwa_client_secret,
-        AWS_ACCESS_KEY_ID: credentials.aws_access_key,
-        AWS_SECRET_ACCESS_KEY: credentials.aws_secret_key,
+        AWS_ACCESS_KEY: credentials.aws_access_key,
+        AWS_SECRET_KEY: credentials.aws_secret_key,
         AWS_SELLING_PARTNER_ROLE: credentials.aws_role
-      },
+      } as any,
       options: {
         auto_request_tokens: true,
         debug_log: true,
