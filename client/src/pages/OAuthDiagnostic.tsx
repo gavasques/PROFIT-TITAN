@@ -8,7 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function OAuthDiagnostic() {
   const [testResults, setTestResults] = useState<any>(null);
+  const [credentialsTest, setCredentialsTest] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestingCredentials, setIsTestingCredentials] = useState(false);
   const { toast } = useToast();
 
   const runDiagnostic = async () => {
@@ -25,6 +27,36 @@ export default function OAuthDiagnostic() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const testCredentials = async () => {
+    setIsTestingCredentials(true);
+    try {
+      const response = await fetch('/api/amazon-auth/test-credentials');
+      const data = await response.json();
+      setCredentialsTest(data);
+      
+      if (data.success) {
+        toast({
+          title: "Sucesso!",
+          description: "Credenciais LWA estão funcionando corretamente",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: data.message || "Falha no teste de credenciais",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao testar credenciais",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingCredentials(false);
     }
   };
 
@@ -163,6 +195,43 @@ export default function OAuthDiagnostic() {
                 Seller Central - Developer Console
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Teste de Credenciais LWA</CardTitle>
+            <CardDescription>
+              Teste se as credenciais LWA estão funcionando corretamente
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={testCredentials}
+              disabled={isTestingCredentials}
+              className="w-full mb-4"
+              variant={credentialsTest?.success ? "default" : "destructive"}
+            >
+              {isTestingCredentials ? "Testando..." : "Testar Credenciais LWA"}
+            </Button>
+
+            {credentialsTest && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  {credentialsTest.success ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                  )}
+                  <h4 className="font-semibold">
+                    {credentialsTest.success ? "Credenciais OK" : "Credenciais com Problema"}
+                  </h4>
+                </div>
+                <pre className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg text-sm overflow-auto">
+                  {JSON.stringify(credentialsTest, null, 2)}
+                </pre>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -197,6 +197,71 @@ export function registerAmazonAuthRoutes(app: Express) {
     }
   });
   
+  // Test LWA credentials endpoint
+  app.get('/api/amazon-auth/test-credentials', async (req, res) => {
+    try {
+      console.log('Testing LWA credentials...');
+      
+      // Test with refresh token grant (safer than authorization code)
+      const tokenUrl = 'https://api.amazon.com/auth/o2/token';
+      
+      const tokenBody = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: process.env.AMAZON_REFRESH_TOKEN || '',
+        client_id: process.env.AMAZON_LWA_APP_ID || '',
+        client_secret: process.env.AMAZON_LWA_CLIENT_SECRET || ''
+      });
+      
+      console.log('Testing with refresh token grant...', {
+        hasRefreshToken: !!process.env.AMAZON_REFRESH_TOKEN,
+        hasClientId: !!process.env.AMAZON_LWA_APP_ID,
+        hasClientSecret: !!process.env.AMAZON_LWA_CLIENT_SECRET
+      });
+      
+      const tokenResponse = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: tokenBody
+      });
+      
+      const responseText = await tokenResponse.text();
+      
+      if (tokenResponse.ok) {
+        const tokenData = JSON.parse(responseText);
+        console.log('LWA credentials test successful!');
+        
+        res.json({
+          success: true,
+          message: 'LWA credentials are working correctly',
+          tokenInfo: {
+            hasAccessToken: !!tokenData.access_token,
+            tokenType: tokenData.token_type,
+            expiresIn: tokenData.expires_in
+          }
+        });
+      } else {
+        console.error('LWA credentials test failed:', responseText);
+        
+        res.status(400).json({
+          success: false,
+          message: 'LWA credentials test failed',
+          error: JSON.parse(responseText),
+          status: tokenResponse.status
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error testing LWA credentials:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to test LWA credentials',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Diagnostic endpoint
   app.get('/api/amazon-auth/diagnostic', async (req, res) => {
     try {
@@ -205,6 +270,7 @@ export function registerAmazonAuthRoutes(app: Express) {
         environment: {
           lwaAppId: process.env.AMAZON_LWA_APP_ID ? `${process.env.AMAZON_LWA_APP_ID.substring(0, 15)}...` : 'Not set',
           hasClientSecret: !!process.env.AMAZON_LWA_CLIENT_SECRET,
+          hasRefreshToken: !!process.env.AMAZON_REFRESH_TOKEN,
           spApiAppId: process.env.AMAZON_SP_API_APP_ID ? `${process.env.AMAZON_SP_API_APP_ID.substring(0, 15)}...` : 'Not set',
         },
         urls: {
@@ -216,7 +282,8 @@ export function registerAmazonAuthRoutes(app: Express) {
           'Verify redirect URI is configured in Amazon Developer Console',
           'Check LWA Client ID and Client Secret are correct',
           'Ensure allowed origins include the production domain',
-          'Confirm LWA app is enabled and published'
+          'Confirm LWA app is enabled and published',
+          'Test credentials using /api/amazon-auth/test-credentials'
         ]
       };
       

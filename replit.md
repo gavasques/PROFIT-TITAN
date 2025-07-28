@@ -166,6 +166,9 @@ Preferred communication style: Simple, everyday language.
 - **Diagnostic page created** at /oauth-diagnostic with step-by-step troubleshooting guide
 - **Amazon LWA documentation reviewed** - identified exact configuration requirements for redirect URIs and allowed origins
 - **LWA setup guide created** at /lwa-setup with complete step-by-step configuration instructions
+- **Refresh token updated** by user but "Client authentication failed" error persists
+- **Root cause confirmed**: Client ID/Secret from different Security Profile than refresh token
+- **Solution identified**: Must use matching LWA credentials from same Security Profile that generated refresh token
 - **Amazon Developer Central registration** in progress with complete app listing
 - **Support page created** at /support with comprehensive help content and contact info
 - **Professional email configured** (suporte@guivasques.app) for official support channel
