@@ -182,49 +182,14 @@ export function registerAmazonRoutes(app: Express) {
       
       console.log(`Found account: ${account.accountName}, region: ${account.region}`);
       
-      // For now, create sample products directly
-      const sampleProducts = [
-        {
-          userId,
-          sku: "TEST-SANDBOX-001",
-          internalSku: "TEST-SANDBOX-001",
-          name: "Produto Teste Sandbox 1",
-          description: "Produto de teste do ambiente sandbox",
-          category: "Teste",
-          brand: "Amazon Sandbox"
-        },
-        {
-          userId,
-          sku: "TEST-SANDBOX-002",
-          internalSku: "TEST-SANDBOX-002",
-          name: "Produto Teste Sandbox 2",
-          description: "Outro produto de teste do ambiente sandbox",
-          category: "Teste",
-          brand: "Amazon Sandbox"
-        }
-      ];
-      
-      const existingProducts = await storage.getProducts(userId);
-      const existingSKUs = existingProducts.map(p => p.sku);
-      let syncedCount = 0;
-      
-      for (const product of sampleProducts) {
-        if (!existingSKUs.includes(product.sku)) {
-          await storage.createProduct(product);
-          syncedCount++;
-          console.log(`Created test product: ${product.name}`);
-        }
-      }
-      
-      // Update last sync time
-      await storage.updateAmazonAccount(accountId, {
-        lastSyncAt: new Date(),
-        status: 'connected'
-      });
+      // Use the real Amazon SP-API service to sync products
+      const syncResult = await amazonSPService.syncProducts(accountId, userId);
       
       res.json({ 
-        message: `${syncedCount} produtos de teste criados com sucesso`,
-        count: syncedCount
+        message: `Sincronização concluída: ${syncResult.newCount} novos produtos, ${syncResult.existingCount} existentes`,
+        newCount: syncResult.newCount,
+        existingCount: syncResult.existingCount,
+        totalCount: syncResult.totalCount
       });
       
     } catch (error) {
@@ -375,5 +340,81 @@ export function registerAmazonRoutes(app: Express) {
     }
   });
 
+  // Debug endpoint - Test SP-API connection and basic calls
+  app.get('/api/amazon-accounts/:id/debug', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const account = await storage.getAmazonAccount(id);
+      if (!account || account.userId !== userId) {
+        return res.status(404).json({ message: "Amazon account not found" });
+      }
+
+      console.log(`🔧 Running debug for account: ${account.accountName}`);
+      
+      const debugInfo = {
+        account: {
+          name: account.accountName,
+          region: account.region,
+          marketplaceId: account.marketplaceId,
+          status: account.status,
+          lastSync: account.lastSyncAt
+        },
+        tests: {}
+      };
+
+      // Test 1: Validate credentials
+      try {
+        console.log('🔧 Test 1: Validating credentials...');
+        const credentialsValid = await amazonSPService.validateAccountCredentials(account);
+        debugInfo.tests.credentialsValid = credentialsValid;
+        console.log(`🔧 Credentials valid: ${credentialsValid}`);
+      } catch (error) {
+        debugInfo.tests.credentialsValid = false;
+        debugInfo.tests.credentialsError = error instanceof Error ? error.message : 'Unknown error';
+      }
+
+      // Test 2: Test SP-API connection
+      try {
+        console.log('🔧 Test 2: Testing SP-API connection...');
+        const connectionTest = await amazonSPService.testConnection(id);
+        debugInfo.tests.connectionTest = connectionTest;
+        console.log(`🔧 Connection test: ${connectionTest}`);
+      } catch (error) {
+        debugInfo.tests.connectionTest = false;
+        debugInfo.tests.connectionError = error instanceof Error ? error.message : 'Unknown error';
+      }
+
+      // Test 3: Try to get marketplace participations
+      try {
+        console.log('🔧 Test 3: Getting marketplace participations...');
+        const client = await amazonSPService.getClient(id);
+        const marketplaceResponse = await client.callAPI({
+          operation: 'getMarketplaceParticipations',
+          endpoint: 'sellers'
+        });
+        
+        debugInfo.tests.marketplaceParticipations = {
+          success: !!marketplaceResponse.success,
+          data: marketplaceResponse.result ? 'Data received' : 'No data'
+        };
+        console.log(`🔧 Marketplace participations: ${marketplaceResponse.success}`);
+      } catch (error) {
+        debugInfo.tests.marketplaceParticipations = {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+
+      res.json(debugInfo);
+    } catch (error) {
+      console.error("Error running debug:", error);
+      res.status(500).json({ 
+        message: "Failed to run debug",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
 }

@@ -23,8 +23,10 @@ export class AmazonSPService {
   private spClients: Map<string, any> = new Map();
 
   private createClient(credentials: AmazonCredentials): any {
-    // Map Brasil region to na (North America) as the library doesn't support br directly
+    // Map Brasil region correctly - Brazil uses 'na' region with different endpoint
     const apiRegion = credentials.region === 'br' ? 'na' : credentials.region;
+    
+    console.log(`🌎 Creating SP-API client for region: ${credentials.region} (mapped to: ${apiRegion})`);
     
     return new SellingPartnerAPI.SellingPartner({
       region: apiRegion,
@@ -38,8 +40,13 @@ export class AmazonSPService {
       } as any,
       options: {
         auto_request_tokens: true,
-        debug_log: true,
-        use_sandbox: false
+        debug_log: process.env.NODE_ENV === 'development',
+        use_sandbox: process.env.NODE_ENV === 'development' && process.env.AMAZON_USE_SANDBOX === 'true',
+        endpoints_versions: {
+          'catalog': '2022-04-01',
+          'listings': '2021-08-01',
+          'reports': 'v2021-06-30'
+        }
       }
     });
   }
@@ -94,6 +101,16 @@ export class AmazonSPService {
         throw new Error('Amazon account not found');
       }
 
+      // Validate account credentials before proceeding
+      console.log('🔐 Validating Amazon credentials...');
+      const isValidCredentials = await this.validateAccountCredentials(amazonAccount);
+      if (!isValidCredentials) {
+        await storage.updateAmazonAccount(amazonAccountId, {
+          status: 'authorization_error'
+        });
+        throw new Error('Credenciais Amazon inválidas ou expiradas. Reconecte sua conta.');
+      }
+
       // Update refresh token if available in environment
       if (process.env.AMAZON_REFRESH_TOKEN && amazonAccount.refreshToken !== process.env.AMAZON_REFRESH_TOKEN) {
         await storage.updateAmazonAccount(amazonAccountId, {
@@ -116,40 +133,71 @@ export class AmazonSPService {
         // Get marketplace ID correctly
         const marketplaceId = await this.getMarketplaceId(amazonAccountId);
         
-        // Use Listings Items API to get all products for this seller  
-        const sellerId = amazonAccount.sellerId || 'A2T1SY156TAAGD';
-        console.log('📋 Using seller ID:', sellerId);
-        console.log('📋 Using marketplace ID:', marketplaceId);
+        // Try FBA Inventory API first (more reliable for active inventory)
+        let items = [];
         
-        const listingsResponse = await client.callAPI({
-          operation: 'getListingsItems',
-          endpoint: 'listingsItems',
-          path: {
-            sellerId: sellerId,
-          },
-          query: {
-            marketplaceIds: marketplaceId,
-            pageSize: 20,
-            includedData: 'summaries,attributes,issues,offers,fulfillmentAvailability'
-          }
-        });
+        try {
+          console.log('📦 Trying FBA Inventory API...');
+          const inventoryResponse = await client.callAPI({
+            operation: 'getInventorySummaries',
+            endpoint: 'fbaInventory',
+            query: {
+              details: true,
+              granularityType: 'Marketplace',
+              granularityId: marketplaceId,
+              marketplaceIds: [marketplaceId]
+            }
+          });
 
-        console.log('📦 API Response received:', !!listingsResponse);
-        console.log('📦 Response keys:', listingsResponse ? Object.keys(listingsResponse) : 'No response');
-
-        if (listingsResponse && listingsResponse.items) {
-          const items = listingsResponse.items;
-          
-          for (const item of items) {
-            const isExisting = await this.processListingItem(item, amazonAccountId, userId, existingSkus);
-            if (isExisting) {
-              existingCount++;
-            } else {
-              newCount++;
+          if (inventoryResponse && inventoryResponse.inventorySummaries) {
+            console.log(`📦 Found ${inventoryResponse.inventorySummaries.length} inventory items`);
+            items = inventoryResponse.inventorySummaries;
+            
+            for (const item of items) {
+              const isExisting = await this.processInventoryItem(item, amazonAccountId, userId, existingSkus);
+              if (isExisting) {
+                existingCount++;
+              } else {
+                newCount++;
+              }
             }
           }
-        } else {
-          console.log('No listings data received or empty response');
+        } catch (inventoryError) {
+          console.log('📦 FBA Inventory API failed, trying Listings API...');
+          
+          // Fallback to Listings Items API
+          const sellerId = amazonAccount.sellerId || 'A2T1SY156TAAGD';
+          console.log('📋 Using seller ID:', sellerId);
+          console.log('📋 Using marketplace ID:', marketplaceId);
+          
+          const listingsResponse = await client.callAPI({
+            operation: 'getListingsItems',
+            endpoint: 'listingsItems',
+            path: {
+              sellerId: sellerId,
+            },
+            query: {
+              marketplaceIds: [marketplaceId],
+              pageSize: 20,
+              includedData: 'summaries,attributes,issues,offers,fulfillmentAvailability'
+            }
+          });
+
+          if (listingsResponse && listingsResponse.items) {
+            console.log(`📦 Found ${listingsResponse.items.length} listing items`);
+            items = listingsResponse.items;
+            
+            for (const item of items) {
+              const isExisting = await this.processListingItem(item, amazonAccountId, userId, existingSkus);
+              if (isExisting) {
+                existingCount++;
+              } else {
+                newCount++;
+              }
+            }
+          } else {
+            console.log('📦 No listings data received or empty response');
+          }
         }
 
         // Update last sync time
@@ -183,6 +231,99 @@ export class AmazonSPService {
         lastSyncAt: new Date()
       });
       throw error;
+    }
+  }
+
+  // Process individual inventory item from FBA Inventory API
+  private async processInventoryItem(
+    item: any, 
+    amazonAccountId: string, 
+    userId: string, 
+    existingSkus: Set<string>
+  ): Promise<boolean> {
+    try {
+      const sku = item.sellerSku;
+      const asin = item.asin;
+      const fnSku = item.fnSku;
+      const isExisting = existingSkus.has(sku);
+
+      console.log(`📦 Processing inventory item: ${sku} (ASIN: ${asin})`);
+
+      // Get product details from catalog API
+      let productName = `Produto ${sku}`;
+      let description = '';
+      let imageUrl = null;
+
+      try {
+        const client = await this.getClient(amazonAccountId);
+        const catalogResponse = await client.callAPI({
+          operation: 'getCatalogItem',
+          endpoint: 'catalogItems',
+          path: {
+            asin: asin
+          },
+          query: {
+            marketplaceIds: [await this.getMarketplaceId(amazonAccountId)],
+            includedData: ['attributes', 'images', 'salesRanks']
+          }
+        });
+
+        if (catalogResponse && catalogResponse.attributes) {
+          const attributes = catalogResponse.attributes;
+          productName = attributes.item_name?.[0]?.value || 
+                       attributes.title?.[0]?.value || 
+                       productName;
+          description = attributes.description?.[0]?.value || '';
+          imageUrl = catalogResponse.images?.[0]?.images?.[0]?.link || null;
+        }
+      } catch (catalogError) {
+        console.log(`Could not fetch catalog details for ASIN: ${asin}`);
+      }
+
+      if (isExisting) {
+        // Update existing product
+        const existingProduct = await storage.getProductBySku(sku, userId);
+        if (existingProduct) {
+          await storage.updateProduct(existingProduct.id, {
+            name: productName,
+            description,
+            imageUrl
+          });
+          
+          // Update Amazon listing
+          await this.updateOrCreateAmazonListing(existingProduct.id, amazonAccountId, {
+            asin,
+            sellerSku: sku,
+            condition: 'New',
+            totalQuantity: item.totalQuantity || 0
+          });
+        }
+        return true;
+      } else {
+        // Create new product
+        const newProduct = await storage.createProduct({
+          userId,
+          sku: sku,
+          internalSku: sku,
+          name: productName,
+          description,
+          category: 'Importado da Amazon',
+          imageUrl
+        });
+
+        // Create Amazon listing
+        await this.updateOrCreateAmazonListing(newProduct.id, amazonAccountId, {
+          asin,
+          sellerSku: sku,
+          condition: 'New',
+          totalQuantity: item.totalQuantity || 0
+        });
+
+        return false;
+      }
+    } catch (error) {
+      console.error('Error processing inventory item:', error);
+      return false;
     }
   }
 
@@ -585,6 +726,62 @@ export class AmazonSPService {
       return response.success;
     } catch (error) {
       console.error('Credential validation failed:', error);
+      return false;
+    }
+  }
+
+  // Validate account credentials with token refresh check
+  async validateAccountCredentials(account: AmazonAccount): Promise<boolean> {
+    try {
+      console.log(`🔍 Validating credentials for account: ${account.accountName}`);
+      
+      // First, try to get a fresh access token
+      const tokenUrl = 'https://api.amazon.com/auth/o2/token';
+      
+      const tokenBody = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: account.refreshToken,
+        client_id: account.lwaAppId,
+        client_secret: account.lwaClientSecret
+      });
+      
+      const tokenResponse = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'ProfitHub/1.0'
+        },
+        body: tokenBody
+      });
+      
+      if (!tokenResponse.ok) {
+        console.error(`❌ Token refresh failed: ${tokenResponse.status}`);
+        return false;
+      }
+      
+      const tokenData = await tokenResponse.json();
+      if (!tokenData.access_token) {
+        console.error('❌ No access token received');
+        return false;
+      }
+      
+      console.log('✅ Token refresh successful');
+      
+      // Now validate SP-API access
+      const credentials: AmazonCredentials = {
+        refresh_token: account.refreshToken,
+        lwa_app_id: account.lwaAppId,
+        lwa_client_secret: account.lwaClientSecret,
+        aws_access_key: account.awsAccessKey,
+        aws_secret_key: account.awsSecretKey,
+        aws_role: account.awsRole,
+        region: account.region as 'na' | 'eu' | 'fe' | 'br'
+      };
+      
+      return await this.validateCredentials(credentials);
+      
+    } catch (error) {
+      console.error('❌ Account credential validation failed:', error);
       return false;
     }
   }

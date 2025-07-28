@@ -184,6 +184,83 @@ Preferred communication style: Simple, everyday language.
 - **Amazon account segregation** ensuring users only see their own marketplace connections
 - **Comprehensive security review** completed for all API endpoints and database queries
 
-The system is fully operational in production with complete Amazon SP-API integration. OAuth authorization has been successfully completed and the system is actively processing real marketplace data from connected Amazon accounts.
+### Product Synchronization Fixes (January 2025)
+- **Critical SP-API Integration Issues Resolved** - Fixed major problems preventing product synchronization
+- **Sandbox/Test Data Removal** - Eliminated hardcoded test products from sync-products endpoint
+- **Real SP-API Service Integration** - Route now properly uses `amazonSPService.syncProducts()` for actual Amazon data
+- **Enhanced Credential Validation** - Implemented `validateAccountCredentials()` with token refresh testing
+- **Pre-sync Validation** - System now validates credentials before attempting synchronization operations
+- **Improved Error Handling** - Account status automatically updated to 'authorization_error' when credentials fail
+- **Brazil Region Configuration** - Fixed SP-API client configuration for Brazilian marketplace (A2Q3Y263D00KWC)
+- **Environment-based Configuration** - Sandbox/production mode now properly controlled via environment variables
+- **Dual Product Retrieval Strategy** - Implemented FBA Inventory API as primary with Listings API fallback
+- **Product Data Enrichment** - Added Catalog API integration for complete product details (images, descriptions)
+- **Debug Endpoint Added** - New `/api/amazon-accounts/:id/debug` endpoint for connection diagnostics
+- **Comprehensive Logging** - Enhanced logging with emojis and detailed status information for troubleshooting
+
+### SP-API Service Improvements (January 2025)
+- **Client Configuration Enhanced** - Better region mapping with Brazil support (br → na with correct marketplace)
+- **Endpoint Version Control** - Specified API versions: Catalog 2022-04-01, Listings 2021-08-01, Reports v2021-06-30
+- **Debug Mode Integration** - Development logging controlled via NODE_ENV environment variable
+- **Multiple Product Sources** - FBA Inventory API for active inventory, Listings API for all products
+- **Real-time Token Validation** - LWA token refresh testing before API calls
+- **Marketplace Participation Testing** - Connection validation using seller marketplace data
+- **Robust Error Recovery** - Graceful fallback between different SP-API endpoints
+- **Account Status Management** - Automatic status updates based on API response success/failure
+
+### New API Endpoints (January 2025)
+- **Debug Endpoint**: `GET /api/amazon-accounts/:id/debug` - Comprehensive connection and credential testing
+- **Enhanced Sync**: `POST /api/amazon-accounts/:id/sync-products` - Now uses real SP-API with detailed response
+- **Validation Tests**: Three-tier validation (credentials → connection → marketplace participation)
+- **Detailed Responses**: Structured JSON responses with operation counts and error details
+
+## Technical Implementation Details
+
+### SP-API Integration Architecture
+
+#### Product Synchronization Flow
+1. **Credential Validation** (`validateAccountCredentials()`)
+   - Tests LWA token refresh capability
+   - Validates SP-API client configuration
+   - Updates account status based on validation results
+
+2. **Dual API Strategy**
+   - **Primary**: FBA Inventory API (`getInventorySummaries`) - Active inventory with quantities
+   - **Fallback**: Listings Items API (`getListingsItems`) - All product listings
+   - **Enhancement**: Catalog Items API (`getCatalogItem`) - Product details, images, descriptions
+
+3. **Data Processing Pipeline**
+   - SKU-based duplicate detection
+   - Product creation/update with enriched data
+   - Amazon listing management with marketplace-specific data
+   - Error handling with detailed logging
+
+#### Configuration Management
+```typescript
+// SP-API Client Configuration
+{
+  region: credentials.region === 'br' ? 'na' : credentials.region,
+  use_sandbox: process.env.NODE_ENV === 'development' && process.env.AMAZON_USE_SANDBOX === 'true',
+  endpoints_versions: {
+    'catalog': '2022-04-01',
+    'listings': '2021-08-01', 
+    'reports': 'v2021-06-30'
+  }
+}
+```
+
+### Error Handling & Recovery
+- **Token Expiration**: Automatic refresh token validation
+- **API Failures**: Graceful fallback between endpoints
+- **Rate Limiting**: Built-in retry logic via amazon-sp-api library
+- **Account Status**: Real-time updates ('connected', 'authorization_error', 'error')
+
+### Debug & Monitoring
+- **Comprehensive Logging**: Emoji-enhanced logs for easy identification
+- **Debug Endpoint**: Multi-tier validation testing
+- **Connection Testing**: Marketplace participation verification
+- **Credential Validation**: LWA token refresh testing
+
+The system is fully operational in production with **significantly improved** Amazon SP-API integration. The recent fixes have resolved critical synchronization issues that were preventing product data retrieval. OAuth authorization continues to work correctly, and the system now successfully processes real marketplace data from connected Amazon accounts with enhanced reliability and error handling.
 
 The system is designed to be deployed on Replit's infrastructure but can be adapted for other hosting environments with minimal configuration changes. The architecture supports horizontal scaling through database connection pooling and stateless API design.
