@@ -156,9 +156,13 @@ export function registerAmazonAuthRoutes(app: Express) {
       await storage.updateAmazonAccount(stateData.accountId, {
         sellerId: selling_partner_id,
         refreshToken: tokenData.refresh_token,
+        accessToken: tokenData.access_token || null,
+        tokenExpiresAt: tokenData.expires_in ? new Date(Date.now() + (tokenData.expires_in * 1000)) : null,
         status: 'connected',
         lastSyncAt: new Date()
       });
+      
+      console.log(`✅ Account updated with fresh tokens (expires in ${tokenData.expires_in || 'unknown'} seconds)`);
       
       // Redirect to success page with account info
       res.redirect(`/?auth=success&account=${encodeURIComponent(stateData.accountId)}`);
