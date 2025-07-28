@@ -155,6 +155,57 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(products.createdAt));
   }
 
+  async getProductsPaginated(
+    userId: string, 
+    page: number, 
+    limit: number, 
+    search?: string
+  ): Promise<{ products: Product[]; total: number }> {
+    const offset = (page - 1) * limit;
+    
+    let query = db
+      .select()
+      .from(products)
+      .where(eq(products.userId, userId));
+    
+    if (search) {
+      query = query.where(
+        or(
+          sql`${products.name} ILIKE ${`%${search}%`}`,
+          sql`${products.sku} ILIKE ${`%${search}%`}`,
+          sql`${products.internalSku} ILIKE ${`%${search}%`}`
+        )
+      );
+    }
+    
+    let countQuery = db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(products)
+      .where(eq(products.userId, userId));
+    
+    if (search) {
+      countQuery = countQuery.where(
+        or(
+          sql`${products.name} ILIKE ${`%${search}%`}`,
+          sql`${products.sku} ILIKE ${`%${search}%`}`,
+          sql`${products.internalSku} ILIKE ${`%${search}%`}`
+        )
+      );
+    }
+    
+    const [totalResult] = await countQuery;
+    
+    const productsList = await query
+      .orderBy(desc(products.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return {
+      products: productsList,
+      total: Number(totalResult?.count || 0)
+    };
+  }
+
   async getProduct(id: string): Promise<Product | undefined> {
     const [product] = await db
       .select()
