@@ -156,4 +156,50 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+// Administrative route to change user password
+router.post('/admin/change-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: 'Email e nova senha são obrigatórios' });
+    }
+
+    // Check if user exists
+    let user = await storage.getUserByEmail(email);
+    
+    if (!user) {
+      // Create user if doesn't exist
+      const hashedPassword = await hashPassword(newPassword);
+      const [firstName, lastName] = email.split('@')[0].split('.').map(name => 
+        name.charAt(0).toUpperCase() + name.slice(1)
+      );
+      
+      user = await storage.createUser({
+        email: email,
+        password: hashedPassword,
+        firstName: firstName || 'Usuário',
+        lastName: lastName || 'Sistema',
+      });
+      
+      return res.json({ 
+        message: 'Usuário criado com sucesso',
+        user: { email: user.email, id: user.id }
+      });
+    } else {
+      // Update existing user password
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUserPassword(user.id, hashedPassword);
+      
+      return res.json({ 
+        message: 'Senha alterada com sucesso',
+        user: { email: user.email, id: user.id }
+      });
+    }
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+});
+
 export default router;
