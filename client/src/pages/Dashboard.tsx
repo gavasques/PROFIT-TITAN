@@ -22,6 +22,24 @@ export default function Dashboard() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showAmazonModal, setShowAmazonModal] = useState(false);
 
+  // Check for auth success from URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const authStatus = urlParams.get('auth');
+    const accountId = urlParams.get('account');
+
+    if (authStatus === 'success' && accountId) {
+      toast({
+        title: "Autorização Amazon concluída!",
+        description: "Conta conectada com sucesso. Você pode agora sincronizar dados.",
+        variant: "default",
+      });
+
+      // Clean URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
+
   // Fetch Amazon accounts
   const { data: amazonAccounts = [], isLoading: loadingAccounts, error: accountsError } = useQuery({
     queryKey: ["/api/amazon-accounts"],

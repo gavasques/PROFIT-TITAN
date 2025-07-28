@@ -133,8 +133,8 @@ export function registerAmazonAuthRoutes(app: Express) {
         lastSyncAt: new Date()
       });
       
-      // Redirect to success page
-      res.redirect('/amazon-accounts?auth=success');
+      // Redirect to success page with account info
+      res.redirect(`/?auth=success&account=${encodeURIComponent(stateData.accountId)}`);
       
     } catch (error) {
       console.error("Error handling Amazon callback:", error);
