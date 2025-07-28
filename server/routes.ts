@@ -59,10 +59,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const product = await storage.getProduct(id);
       
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
+      }
+      
+      // Ensure user can only access their own products
+      if (product.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
       }
       
       res.json(product);
@@ -95,13 +101,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/products/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const updates = req.body;
       
-      const product = await storage.updateProduct(id, updates);
-      if (!product) {
+      // First check if product exists and belongs to user
+      const existingProduct = await storage.getProduct(id);
+      if (!existingProduct) {
         return res.status(404).json({ message: "Product not found" });
       }
       
+      if (existingProduct.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const product = await storage.updateProduct(id, updates);
       res.json(product);
     } catch (error) {
       console.error("Error updating product:", error);
@@ -112,12 +125,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/products/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const success = await storage.deleteProduct(id);
+      const userId = req.user.claims.sub;
       
-      if (!success) {
+      // First check if product exists and belongs to user
+      const existingProduct = await storage.getProduct(id);
+      if (!existingProduct) {
         return res.status(404).json({ message: "Product not found" });
       }
       
+      if (existingProduct.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const success = await storage.deleteProduct(id);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting product:", error);
@@ -129,6 +149,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id/costs", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify user owns the product
+      const product = await storage.getProduct(id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      if (product.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
       const costs = await storage.getProductCosts(id);
       res.json(costs);
     } catch (error) {
@@ -140,7 +172,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id/costs/current", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const date = req.query.date ? new Date(req.query.date as string) : new Date();
+      
+      // Verify user owns the product
+      const product = await storage.getProduct(id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      if (product.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
       const cost = await storage.getCurrentProductCost(id, date);
       
       if (!cost) {
@@ -158,6 +202,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;
+      
+      // Verify user owns the product
+      const product = await storage.getProduct(id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      if (product.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       
       const costData = insertProductCostSchema.parse({
         ...req.body,
@@ -221,12 +275,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sales routes
   app.get("/api/sales-orders", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const amazonAccountId = req.query.amazonAccountId as string;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       
       if (!amazonAccountId) {
         return res.status(400).json({ message: "amazonAccountId is required" });
+      }
+      
+      // Verify user owns the Amazon account
+      const amazonAccount = await storage.getAmazonAccount(amazonAccountId);
+      if (!amazonAccount) {
+        return res.status(404).json({ message: "Amazon account not found" });
+      }
+      
+      if (amazonAccount.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
       }
       
       const orders = await storage.getSalesOrders(amazonAccountId, startDate, endDate);

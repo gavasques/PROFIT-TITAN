@@ -170,10 +170,13 @@ export class DatabaseStorage implements IStorage {
     
     if (search) {
       query = query.where(
-        or(
-          sql`${products.name} ILIKE ${`%${search}%`}`,
-          sql`${products.sku} ILIKE ${`%${search}%`}`,
-          sql`${products.internalSku} ILIKE ${`%${search}%`}`
+        and(
+          eq(products.userId, userId),
+          or(
+            sql`${products.name} ILIKE ${`%${search}%`}`,
+            sql`${products.sku} ILIKE ${`%${search}%`}`,
+            sql`${products.internalSku} ILIKE ${`%${search}%`}`
+          )
         )
       );
     }
@@ -185,10 +188,13 @@ export class DatabaseStorage implements IStorage {
     
     if (search) {
       countQuery = countQuery.where(
-        or(
-          sql`${products.name} ILIKE ${`%${search}%`}`,
-          sql`${products.sku} ILIKE ${`%${search}%`}`,
-          sql`${products.internalSku} ILIKE ${`%${search}%`}`
+        and(
+          eq(products.userId, userId),
+          or(
+            sql`${products.name} ILIKE ${`%${search}%`}`,
+            sql`${products.sku} ILIKE ${`%${search}%`}`,
+            sql`${products.internalSku} ILIKE ${`%${search}%`}`
+          )
         )
       );
     }
@@ -259,7 +265,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.userId, userId));
 
     if (amazonAccountId) {
-      query = query.where(eq(amazonListings.amazonAccountId, amazonAccountId));
+      query = query.where(
+        and(
+          eq(products.userId, userId),
+          eq(amazonListings.amazonAccountId, amazonAccountId)
+        )
+      );
     }
 
     return await query.orderBy(desc(amazonListings.createdAt));

@@ -138,6 +138,17 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/test-connection', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify user owns the Amazon account
+      const account = await storage.getAmazonAccount(id);
+      if (!account) {
+        return res.status(404).json({ message: "Amazon account not found" });
+      }
+      
+      if (account.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       
       // For sandbox mode, always return connected
       console.log('Testing connection in sandbox mode - returning connected');
@@ -229,6 +240,17 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/sync-orders', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify user owns the Amazon account
+      const account = await storage.getAmazonAccount(id);
+      if (!account) {
+        return res.status(404).json({ message: "Amazon account not found" });
+      }
+      
+      if (account.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       
       // For sandbox mode, create sample orders
       console.log('Creating sample orders for sandbox mode');
@@ -243,6 +265,17 @@ export function registerAmazonRoutes(app: Express) {
   app.post('/api/amazon-accounts/:id/sync-financial', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Verify user owns the Amazon account
+      const account = await storage.getAmazonAccount(id);
+      if (!account) {
+        return res.status(404).json({ message: "Amazon account not found" });
+      }
+      
+      if (account.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       
       await amazonSPService.syncFinancialData(id);
       res.json({ message: "Financial data sync completed successfully" });
@@ -257,6 +290,16 @@ export function registerAmazonRoutes(app: Express) {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;
+      
+      // Verify user owns the Amazon account
+      const account = await storage.getAmazonAccount(id);
+      if (!account) {
+        return res.status(404).json({ message: "Amazon account not found" });
+      }
+      
+      if (account.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       
       // Run all syncs in parallel
       await Promise.all([
@@ -285,13 +328,20 @@ export function registerAmazonRoutes(app: Express) {
   app.put('/api/amazon-accounts/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
+      const userId = req.user.claims.sub;
       const updates = req.body;
       
-      const account = await storage.updateAmazonAccount(id, updates);
-      
-      if (!account) {
+      // Verify user owns the Amazon account
+      const existingAccount = await storage.getAmazonAccount(id);
+      if (!existingAccount) {
         return res.status(404).json({ message: "Amazon account not found" });
       }
+      
+      if (existingAccount.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const account = await storage.updateAmazonAccount(id, updates);
 
       res.json(account);
     } catch (error) {
@@ -304,11 +354,19 @@ export function registerAmazonRoutes(app: Express) {
   app.delete('/api/amazon-accounts/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const success = await storage.deleteAmazonAccount(id);
+      const userId = req.user.claims.sub;
       
-      if (!success) {
+      // Verify user owns the Amazon account
+      const existingAccount = await storage.getAmazonAccount(id);
+      if (!existingAccount) {
         return res.status(404).json({ message: "Amazon account not found" });
       }
+      
+      if (existingAccount.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const success = await storage.deleteAmazonAccount(id);
 
       res.json({ message: "Amazon account deleted successfully" });
     } catch (error) {
