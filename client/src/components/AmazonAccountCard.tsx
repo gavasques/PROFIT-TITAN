@@ -100,6 +100,8 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
         return 'Europa';
       case 'fe':
         return 'Extremo Oriente';
+      case 'br':
+        return 'Brasil';
       default:
         return region.toUpperCase();
     }
@@ -107,9 +109,7 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const syncProductsMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/amazon-accounts/${account.id}/sync-products`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/amazon-accounts/${account.id}/sync-products`);
     },
     onSuccess: () => {
       toast({
@@ -129,9 +129,7 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const syncOrdersMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/amazon-accounts/${account.id}/sync-orders`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/amazon-accounts/${account.id}/sync-orders`);
     },
     onSuccess: () => {
       toast({
@@ -151,9 +149,7 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const syncAllMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/amazon-accounts/${account.id}/sync-all`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/amazon-accounts/${account.id}/sync-all`);
     },
     onSuccess: () => {
       toast({
@@ -173,9 +169,7 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/amazon-accounts/${account.id}/test-connection`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/amazon-accounts/${account.id}/test-connection`);
     },
     onSuccess: (data: any) => {
       toast({
@@ -198,9 +192,7 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/amazon-accounts/${account.id}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/amazon-accounts/${account.id}`);
     },
     onSuccess: () => {
       toast({
