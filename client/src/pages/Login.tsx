@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginData } from "@shared/schema";
@@ -14,6 +14,19 @@ import { Link, useLocation } from "wouter";
 export default function Login() {
   const [, navigate] = useLocation();
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Check for success messages from URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const message = urlParams.get('message');
+    
+    if (message === 'amazon_connected') {
+      setSuccessMessage('Conta Amazon conectada com sucesso! Faça login para continuar.');
+      // Clean URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const form = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -59,6 +72,12 @@ export default function Login() {
         </CardHeader>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
+            {successMessage && (
+              <Alert variant="default" className="border-green-200 bg-green-50 text-green-800">
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            )}
+            
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>

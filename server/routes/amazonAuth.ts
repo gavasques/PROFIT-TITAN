@@ -70,14 +70,9 @@ export function registerAmazonAuthRoutes(app: Express) {
     }
   });
   
-  // Amazon OAuth callback
-  app.get('/api/amazon-auth/callback', isAuthenticated, async (req: any, res) => {
+  // Amazon OAuth callback (no authentication required - public endpoint)
+  app.get('/api/amazon-auth/callback', async (req: any, res) => {
     try {
-      const userId = getUserId(req);
-      
-      if (!userId) {
-        return res.status(401).json({ message: "User ID not found" });
-      }
       const { state, spapi_oauth_code, selling_partner_id } = req.query;
       
       console.log('Amazon OAuth callback received:', {
@@ -98,6 +93,7 @@ export function registerAmazonAuthRoutes(app: Express) {
       
       // Decode state to get account info
       const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+      const userId = stateData.userId;
       
       if (!spapi_oauth_code) {
         return res.status(400).json({ message: "Authorization code not provided" });
@@ -173,8 +169,47 @@ export function registerAmazonAuthRoutes(app: Express) {
       
       console.log(`✅ Account updated with fresh tokens (expires in ${tokenData.expires_in || 'unknown'} seconds)`);
       
-      // Redirect to success page with account info
-      res.redirect(`/?auth=success&account=${encodeURIComponent(stateData.accountId)}`);
+      // Create a simple HTML page that handles the redirect with auth state
+      const successPageHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Conexão Amazon - ProfitHub</title>
+        <style>
+          body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f5f5f5; }
+          .success { text-align: center; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          .success h1 { color: #16a34a; margin-bottom: 16px; }
+          .success p { color: #666; margin-bottom: 24px; }
+          .loader { border: 4px solid #f3f3f3; border-top: 4px solid #16a34a; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
+      </head>
+      <body>
+        <div class="success">
+          <h1>✅ Conta Amazon Conectada!</h1>
+          <p>Sua conta foi conectada com sucesso. Redirecionando...</p>
+          <div class="loader"></div>
+        </div>
+        <script>
+          // Check if user is logged in (has auth token)
+          const token = localStorage.getItem('auth_token');
+          if (token) {
+            // User is logged in, redirect to dashboard
+            setTimeout(() => {
+              window.location.href = '/?auth=success&account=${encodeURIComponent(stateData.accountId)}';
+            }, 2000);
+          } else {
+            // User not logged in, redirect to login page with message
+            setTimeout(() => {
+              window.location.href = '/login?message=amazon_connected';
+            }, 2000);
+          }
+        </script>
+      </body>
+      </html>
+      `;
+      
+      res.send(successPageHtml);
       
     } catch (error) {
       console.error("Error handling Amazon callback:", error);
