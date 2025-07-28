@@ -10,13 +10,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Development
-npm run dev              # Start development server with hot reload
+npm run dev              # Start development server (simplified - no --env-file needed)
 npm run check           # Type checking
 npm run build           # Build for production
 npm run start           # Start production server
 
 # Database
 npm run db:push         # Push schema changes to database
+
+# Development with Mock Auth (automatic when NODE_ENV=development)
+# Set SKIP_AUTH=true for local development without real JWT validation
 ```
 
 ## Architecture Overview
@@ -43,9 +46,14 @@ ProfitHub is a full-stack Amazon seller management system with React frontend an
 ### Core Systems
 
 **Authentication & Multi-tenancy**
-- Replit OAuth integration in `server/replitAuth.ts`
+- **JWT Authentication System** with email/password login (`server/auth.ts`)
+- bcrypt password hashing with 10 salt rounds
+- JWT tokens with 7-day expiration
+- Bearer token authentication via `Authorization: Bearer <token>` header
+- Complete auth routes: `/api/auth/login`, `/api/auth/register`, `/api/auth/user`
 - All API routes enforce user isolation via `isAuthenticated` middleware
 - User-scoped queries prevent cross-user data access
+- **Legacy Replit Auth support** available via `SKIP_AUTH=true` for development
 
 **Amazon SP-API Integration**
 - `amazonSPService.ts` handles all SP-API interactions
@@ -67,6 +75,12 @@ ProfitHub is a full-stack Amazon seller management system with React frontend an
 
 ### Key API Endpoints
 
+**Authentication (JWT)**
+- `POST /api/auth/register` - User registration with email/password
+- `POST /api/auth/login` - Login with email/password, returns JWT token
+- `GET /api/auth/user` - Get current user profile (requires Bearer token)
+- All authenticated routes require `Authorization: Bearer <jwt_token>` header
+
 **Amazon Integration**
 - `POST /api/amazon-accounts/:id/sync-products` - Real SP-API product sync
 - `GET /api/amazon-accounts/:id/debug` - Connection diagnostics
@@ -82,7 +96,8 @@ ProfitHub is a full-stack Amazon seller management system with React frontend an
 
 Required for production:
 - `DATABASE_URL` - Neon PostgreSQL connection
-- `SESSION_SECRET` - Session encryption key
+- `JWT_SECRET` - JWT token signing secret key
+- `SESSION_SECRET` - Session encryption key (for compatibility)
 - `AMAZON_LWA_APP_ID` - Amazon LWA client ID
 - `AMAZON_LWA_CLIENT_SECRET` - Amazon LWA secret
 - `AMAZON_REFRESH_TOKEN` - OAuth refresh token
@@ -91,8 +106,10 @@ Required for production:
 - `AMAZON_AWS_ROLE_ARN` - AWS role ARN
 - `AMAZON_SP_API_APP_ID` - SP-API application ID
 
-Optional:
+Development/Optional:
+- `SKIP_AUTH=true` - Enable mock authentication for local development
 - `AMAZON_USE_SANDBOX=true` - Enable sandbox mode in development
+- `NODE_ENV=development` - Development mode flag
 
 ### Development Notes
 
@@ -115,15 +132,34 @@ Optional:
 - TanStack Query for server state
 - Wouter for lightweight routing
 - shadcn/ui components with Tailwind CSS
+- JWT token storage in localStorage with automatic logout on invalid tokens
+
+**Authentication Flow**
+1. **Registration**: `POST /api/auth/register` with email/password → JWT token returned
+2. **Login**: `POST /api/auth/login` with credentials → JWT token returned  
+3. **Token Usage**: Include `Authorization: Bearer <token>` header in all API requests
+4. **Auto-logout**: Frontend automatically clears token on 401 responses
+5. **Development Mode**: Use `SKIP_AUTH=true` to bypass JWT validation with mock user
+
+**Database Schema Updates**
+- `users` table now includes `password` (hashed), `isEmailVerified` columns
+- Removed dependency on Replit-specific OAuth fields
+- Maintained backward compatibility with existing user data
 
 **Error Handling Pattern**
 - All routes return consistent error JSON: `{ message: string, error?: any }`
 - User ownership validation on all protected resources
 - Automatic account status updates on SP-API failures
+- JWT validation errors return 401 with clear error messages
 
 **Key Recent Improvements (refer to replit.md for full details)**
+- **Migration from Replit Auth to JWT Authentication (July 2025)** - Complete independence from external OAuth
+- Added Login/Register pages with email/password authentication
 - Fixed product synchronization with real SP-API integration
 - Enhanced credential validation with token refresh testing
 - Implemented dual API strategy (FBA Inventory + Listings fallback)
 - Added comprehensive debug endpoint for troubleshooting
 - Improved Brazil marketplace configuration
+- **Local development environment** with mock auth and database systems
+
+**Migration Note**: The system has been fully migrated from Replit OAuth to standard JWT authentication. The `SKIP_AUTH=true` flag maintains compatibility for local development and debugging. All `authUtils.ts` functions now handle both production JWT and development mock authentication seamlessly.
