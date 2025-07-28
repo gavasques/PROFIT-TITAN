@@ -184,9 +184,21 @@ export default function OAuthTest() {
             <ol className="list-decimal list-inside space-y-2 text-sm">
               <li>Testar o workflow OAuth com a URL corrigida</li>
               <li>Verificar se a página de consentimento da Amazon carrega corretamente</li>
+              <li>Se houver erro "Client authentication failed", use o diagnóstico</li>
               <li>Completar o processo de autorização</li>
               <li>Após aprovação da app, remover o parâmetro version=beta</li>
             </ol>
+            
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => window.location.href = '/oauth-diagnostic'}
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Diagnóstico de Problemas OAuth
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

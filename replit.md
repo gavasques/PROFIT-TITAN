@@ -161,7 +161,9 @@ Preferred communication style: Simple, everyday language.
 - **Production domain configured** (profit.guivasques.app) with proper callback URLs
 - **Real Amazon credentials integrated** (LWA App ID, SP-API App ID, Client Secret)
 - **OAuth URL fixed for draft apps** - added required `version=beta` parameter for applications in draft state
-- **TITAN-CORE app ready for testing** - OAuth authorization workflow now properly configured
+- **OAuth workflow tested with real credentials** - code successfully obtained but token exchange failed due to "Client authentication failed"
+- **LWA credentials issue identified** - redirect URI or client credentials need configuration in Amazon Developer Console
+- **Diagnostic page created** at /oauth-diagnostic with step-by-step troubleshooting guide
 - **Amazon Developer Central registration** in progress with complete app listing
 - **Support page created** at /support with comprehensive help content and contact info
 - **Professional email configured** (suporte@guivasques.app) for official support channel

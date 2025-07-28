@@ -74,7 +74,8 @@ export function registerAmazonAuthRoutes(app: Express) {
       console.log('Amazon OAuth callback received:', {
         state: state ? 'present' : 'missing',
         code: spapi_oauth_code ? 'present' : 'missing',
-        sellerId: selling_partner_id
+        sellerId: selling_partner_id,
+        fullUrl: req.originalUrl
       });
       
       // Validate state parameter
@@ -103,7 +104,12 @@ export function registerAmazonAuthRoutes(app: Express) {
         client_secret: process.env.AMAZON_LWA_CLIENT_SECRET || ''
       });
       
-      console.log('Exchanging authorization code for tokens...');
+      console.log('Exchanging authorization code for tokens...', {
+        tokenUrl,
+        clientId: process.env.AMAZON_LWA_APP_ID,
+        hasClientSecret: !!process.env.AMAZON_LWA_CLIENT_SECRET,
+        codeLength: spapi_oauth_code?.length
+      });
       
       const tokenResponse = await fetch(tokenUrl, {
         method: 'POST',
@@ -113,13 +119,34 @@ export function registerAmazonAuthRoutes(app: Express) {
         body: tokenBody
       });
       
-      const tokenData = await tokenResponse.json();
+      const responseText = await tokenResponse.text();
+      console.log('Token response:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        headers: Object.fromEntries(tokenResponse.headers.entries()),
+        body: responseText.substring(0, 500)
+      });
+      
+      let tokenData;
+      try {
+        tokenData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse token response:', parseError);
+        return res.status(500).json({ 
+          message: "Invalid token response format",
+          error: responseText.substring(0, 200)
+        });
+      }
       
       if (!tokenResponse.ok) {
-        console.error('Token exchange failed:', tokenData);
+        console.error('Token exchange failed:', {
+          status: tokenResponse.status,
+          error: tokenData
+        });
         return res.status(500).json({ 
           message: "Failed to exchange authorization code",
-          error: tokenData
+          error: tokenData,
+          status: tokenResponse.status
         });
       }
       
@@ -167,6 +194,38 @@ export function registerAmazonAuthRoutes(app: Express) {
     } catch (error) {
       console.error("Error checking auth status:", error);
       res.status(500).json({ message: "Failed to check authorization status" });
+    }
+  });
+  
+  // Diagnostic endpoint
+  app.get('/api/amazon-auth/diagnostic', async (req, res) => {
+    try {
+      const diagnostic = {
+        timestamp: new Date().toISOString(),
+        environment: {
+          lwaAppId: process.env.AMAZON_LWA_APP_ID ? `${process.env.AMAZON_LWA_APP_ID.substring(0, 15)}...` : 'Not set',
+          hasClientSecret: !!process.env.AMAZON_LWA_CLIENT_SECRET,
+          spApiAppId: process.env.AMAZON_SP_API_APP_ID ? `${process.env.AMAZON_SP_API_APP_ID.substring(0, 15)}...` : 'Not set',
+        },
+        urls: {
+          expectedRedirectUri: 'https://profit.guivasques.app/api/amazon-auth/callback',
+          expectedAllowedOrigin: 'https://profit.guivasques.app',
+          tokenEndpoint: 'https://api.amazon.com/auth/o2/token'
+        },
+        recommendations: [
+          'Verify redirect URI is configured in Amazon Developer Console',
+          'Check LWA Client ID and Client Secret are correct',
+          'Ensure allowed origins include the production domain',
+          'Confirm LWA app is enabled and published'
+        ]
+      };
+      
+      res.json(diagnostic);
+    } catch (error) {
+      res.status(500).json({ 
+        error: 'Failed to run diagnostic',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 }
