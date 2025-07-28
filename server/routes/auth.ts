@@ -92,9 +92,35 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user (protected route)
-router.get('/user', authenticateToken, async (req, res) => {
+router.get('/user', async (req, res) => {
   try {
-    const { userId } = (req as any).user;
+    // In development mode with SKIP_AUTH, return mock user without token validation
+    if (process.env.SKIP_AUTH === 'true') {
+      const mockUser = {
+        id: 'dev-user-123',
+        email: 'dev@local.dev',
+        firstName: 'Developer',
+        lastName: 'Local',
+        profileImageUrl: null,
+        isEmailVerified: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return res.json(mockUser);
+    }
+    
+    // In production, use token authentication
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'Access token required' });
+    }
+
+    // Verify token and get user  
+    const { verifyToken } = await import('../auth.js');
+    const decoded = verifyToken(token);
+    const { userId } = decoded as any;
     
     const user = await storage.getUser(userId);
     if (!user) {
@@ -106,6 +132,9 @@ router.get('/user', authenticateToken, async (req, res) => {
     res.json(userWithoutPassword);
   } catch (error) {
     console.error('Get user error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
     res.status(500).json({ message: 'Erro interno do servidor' });
   }
 });

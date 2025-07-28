@@ -7,13 +7,12 @@ export function useAuth() {
   const { data: user, isLoading, error } = useQuery({
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
-      if (!token) return null;
-      
       try {
+        // In development mode, the backend handles auth without requiring a token
         const response = await apiRequest("/api/auth/user", {
-          headers: {
+          headers: token ? {
             Authorization: `Bearer ${token}`,
-          },
+          } : {},
         });
         return response;
       } catch (error: any) {
@@ -25,7 +24,6 @@ export function useAuth() {
       }
     },
     retry: false,
-    enabled: !!token,
   });
 
   const logout = () => {
@@ -35,8 +33,8 @@ export function useAuth() {
 
   return {
     user,
-    isLoading: isLoading && !!token,
-    isAuthenticated: !!user && !!token,
+    isLoading,
+    isAuthenticated: !!user,
     logout,
     error,
   };
