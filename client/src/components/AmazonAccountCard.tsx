@@ -47,7 +47,7 @@ import {
 interface AmazonAccount {
   id: string;
   accountName: string;
-  region: string;
+  region: string | null;
   status: 'pending' | 'connected' | 'error' | 'disconnected';
   sellerId: string;
   marketplaceId: string;
@@ -93,7 +93,9 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
     }
   };
 
-  const getRegionLabel = (region: string) => {
+  const getRegionLabel = (region: string | null) => {
+    if (!region) return 'Região não definida';
+    
     switch (region) {
       case 'na':
         return 'América do Norte';

@@ -383,6 +383,9 @@ curl -X POST http://127.0.0.1:3000/api/amazon-accounts/test-account-1/sync-produ
 - **Usuário de teste criado** - guilherme@profithub.com com senha "Estrela10" para testes
 - **Error 500 de login corrigido** - Problema de importação getUserId resolvido, sistema totalmente funcional
 - **Sistema 100% estável** - Autenticação JWT funcionando perfeitamente em produção
+- **Token automático implementado** - queryClient agora envia token JWT automaticamente em todas as requisições
+- **Erro 401 resolvido** - Sistema de autenticação frontend-backend totalmente sincronizado
+- **Bug region null corrigido** - AmazonAccountCard agora trata corretamente valores null na região
 
 ## Current System Status
 
