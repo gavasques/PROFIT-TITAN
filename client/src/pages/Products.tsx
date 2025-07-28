@@ -1,15 +1,23 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import ProductsTable from "@/components/ProductsTable";
+import ProductSyncButton from "@/components/ProductSyncButton";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 export default function Products() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Get Amazon accounts for sync buttons
+  const { data: amazonAccounts = [] } = useQuery({
+    queryKey: ['/api/amazon-accounts'],
+    enabled: isAuthenticated,
+  });
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -55,6 +63,22 @@ export default function Products() {
                 </Button>
               </div>
             </div>
+
+            {/* Sync Buttons */}
+            {Array.isArray(amazonAccounts) && amazonAccounts.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Sincronizar Produtos</h3>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {amazonAccounts.map((account: any) => (
+                    <ProductSyncButton
+                      key={account.id}
+                      amazonAccountId={account.id}
+                      accountName={account.accountName}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Products Table */}
             <ProductsTable />

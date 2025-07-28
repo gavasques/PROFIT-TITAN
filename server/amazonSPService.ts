@@ -83,25 +83,39 @@ export class AmazonSPService {
     }
   }
 
-  async syncProducts(amazonAccountId: string, userId: string): Promise<void> {
+  async syncProducts(amazonAccountId: string, userId: string): Promise<{ existingCount: number, newCount: number, totalCount: number }> {
     try {
       const client = await this.getClient(amazonAccountId);
       
-      // Get catalog items (products)
-      const catalogResponse = await client.callAPI({
-        operation: 'getCatalogItem',
-        endpoint: 'catalogItems',
+      // Get existing products from our database for this user
+      const existingProducts = await storage.getProductsByUserId(userId);
+      const existingSkus = new Set(existingProducts.map(p => p.sku));
+      
+      let existingCount = 0;
+      let newCount = 0;
+      
+      // Get inventory items (this gives us the actual SKUs from seller's inventory)
+      const inventoryResponse = await client.callAPI({
+        operation: 'getInventorySummaries',
+        endpoint: 'fbaInventory',
         query: {
-          marketplaceIds: await this.getMarketplaceIds(amazonAccountId),
-          includedData: ['attributes', 'images', 'productTypes', 'relationships', 'salesRanks']
+          details: true,
+          granularityType: 'Marketplace',
+          granularityId: await this.getMarketplaceId(amazonAccountId),
+          marketplaceIds: [await this.getMarketplaceId(amazonAccountId)]
         }
       });
 
-      if (catalogResponse.success && catalogResponse.result) {
-        const items = catalogResponse.result.items || [];
+      if (inventoryResponse.success && inventoryResponse.result) {
+        const items = inventoryResponse.result.inventorySummaries || [];
         
         for (const item of items) {
-          await this.processProduct(item, amazonAccountId, userId);
+          const isExisting = await this.processProductWithMatch(item, amazonAccountId, userId, existingSkus);
+          if (isExisting) {
+            existingCount++;
+          } else {
+            newCount++;
+          }
         }
       }
 
@@ -110,6 +124,12 @@ export class AmazonSPService {
         lastSyncAt: new Date(),
         status: 'connected'
       });
+
+      return {
+        existingCount,
+        newCount,
+        totalCount: existingCount + newCount
+      };
 
     } catch (error) {
       console.error('Error syncing products:', error);
@@ -199,46 +219,110 @@ export class AmazonSPService {
     }
   }
 
-  private async processProduct(item: any, amazonAccountId: string, userId: string): Promise<void> {
+  private async processProductWithMatch(item: any, amazonAccountId: string, userId: string, existingSkus: Set<string>): Promise<boolean> {
     try {
-      // Extract product information
+      // Extract product information from inventory item
+      const sku = item.sellerSku;
       const asin = item.asin;
-      const attributes = item.attributes || {};
-      const images = item.images || [];
+      const fnSku = item.fnSku;
       
-      const title = attributes.item_name?.[0]?.value || 
-                   attributes.title?.[0]?.value || 
-                   'Unknown Product';
-
-      // Create or update product in our database
-      const productData: InsertProduct = {
-        userId,
-        name: title,
-        sku: item.identifiers?.find((id: any) => id.identifierType === 'SKU')?.identifier || asin,
-        description: attributes.description?.[0]?.value || '',
-        category: attributes.item_type_name?.[0]?.value || 'General',
-        imageUrl: images[0]?.link || null
-      };
-
-      const product = await storage.createProduct(productData);
-
-      // Create Amazon listing
-      const listingData: InsertAmazonListing = {
-        productId: product.id,
-        amazonAccountId,
-        asin,
-        sku: productData.sku,
-        status: 'active',
-        currentPrice: null, // Will be updated separately
-        imageUrl: productData.imageUrl,
-        lastSyncAt: new Date()
-      };
-
-      await storage.createAmazonListing(listingData);
+      // Check if product already exists by SKU
+      const isExisting = existingSkus.has(sku);
+      
+      if (isExisting) {
+        // Update existing Amazon listing
+        const existingProduct = await storage.getProductBySku(sku, userId);
+        if (existingProduct) {
+          await this.updateOrCreateAmazonListing(existingProduct.id, amazonAccountId, item);
+        }
+        return true;
+      } else {
+        // Create new product
+        await this.createNewProductFromInventory(item, amazonAccountId, userId);
+        return false;
+      }
 
     } catch (error) {
-      console.error('Error processing product:', error);
-      // Continue processing other products
+      console.error('Error processing product with match:', error);
+      return false;
+    }
+  }
+
+  private async createNewProductFromInventory(item: any, amazonAccountId: string, userId: string): Promise<void> {
+    const sku = item.sellerSku;
+    const asin = item.asin;
+    
+    // Get product details from catalog API using ASIN
+    let productName = `Produto ${sku}`;
+    let description = '';
+    let imageUrl = null;
+    
+    try {
+      const client = await this.getClient(amazonAccountId);
+      const catalogResponse = await client.callAPI({
+        operation: 'getCatalogItem',
+        endpoint: 'catalogItems',
+        path: {
+          asin: asin
+        },
+        query: {
+          marketplaceIds: [await this.getMarketplaceId(amazonAccountId)],
+          includedData: ['attributes', 'images']
+        }
+      });
+
+      if (catalogResponse.success && catalogResponse.result) {
+        const catalogItem = catalogResponse.result;
+        const attributes = catalogItem.attributes || {};
+        productName = attributes.item_name?.[0]?.value || 
+                     attributes.title?.[0]?.value || 
+                     productName;
+        description = attributes.description?.[0]?.value || '';
+        imageUrl = catalogItem.images?.[0]?.link || null;
+      }
+    } catch (error) {
+      console.log('Could not fetch catalog details for ASIN:', asin);
+    }
+
+    // Create product in our database
+    const productData: InsertProduct = {
+      userId,
+      internalSku: sku, // Use Amazon SKU as initial internal SKU
+      name: productName,
+      sku: sku,
+      description,
+      category: 'Importado da Amazon',
+      imageUrl
+    };
+
+    const product = await storage.createProduct(productData);
+
+    // Create Amazon listing
+    await this.updateOrCreateAmazonListing(product.id, amazonAccountId, item);
+  }
+
+  private async updateOrCreateAmazonListing(productId: string, amazonAccountId: string, item: any): Promise<void> {
+    const listingData: InsertAmazonListing = {
+      productId,
+      amazonAccountId,
+      asin: item.asin,
+      sku: item.sellerSku,
+      status: item.condition || 'active',
+      currentPrice: null, // Will be updated from pricing API
+      imageUrl: null, // Will be updated from catalog API
+      lastSyncAt: new Date()
+    };
+
+    // Check if listing already exists
+    const existingListing = await storage.getAmazonListingBySkuAndAccount(item.sellerSku, amazonAccountId);
+    
+    if (existingListing) {
+      await storage.updateAmazonListing(existingListing.id, {
+        lastSyncAt: new Date(),
+        status: item.condition || 'active'
+      });
+    } else {
+      await storage.createAmazonListing(listingData);
     }
   }
 
@@ -350,6 +434,11 @@ export class AmazonSPService {
       const amount = parseFloat(charge.ChargeAmount?.Amount || '0');
       return total + amount;
     }, 0);
+  }
+
+  private async getMarketplaceId(amazonAccountId: string): Promise<string> {
+    const account = await storage.getAmazonAccount(amazonAccountId);
+    return account?.marketplaceId || 'A2Q3Y263D00KWC'; // Default to BR marketplace
   }
 
   private async getMarketplaceIds(amazonAccountId: string): Promise<string[]> {

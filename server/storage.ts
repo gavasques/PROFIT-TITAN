@@ -41,6 +41,8 @@ export interface IStorage {
 
   // Product operations
   getProducts(userId: string): Promise<Product[]>;
+  getProductsByUserId(userId: string): Promise<Product[]>;
+  getProductBySku(sku: string, userId: string): Promise<Product | undefined>;
   getProduct(id: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product | undefined>;
@@ -48,6 +50,7 @@ export interface IStorage {
 
   // Amazon Listing operations
   getAmazonListings(userId: string, amazonAccountId?: string): Promise<AmazonListing[]>;
+  getAmazonListingBySkuAndAccount(sku: string, amazonAccountId: string): Promise<AmazonListing | undefined>;
   createAmazonListing(listing: InsertAmazonListing): Promise<AmazonListing>;
   updateAmazonListing(id: string, updates: Partial<InsertAmazonListing>): Promise<AmazonListing | undefined>;
 
@@ -155,6 +158,18 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(products.createdAt));
   }
 
+  async getProductsByUserId(userId: string): Promise<Product[]> {
+    return this.getProducts(userId);
+  }
+
+  async getProductBySku(sku: string, userId: string): Promise<Product | undefined> {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.sku, sku), eq(products.userId, userId)));
+    return product;
+  }
+
   async getProductsPaginated(
     userId: string, 
     page: number, 
@@ -163,48 +178,30 @@ export class DatabaseStorage implements IStorage {
   ): Promise<{ products: Product[]; total: number }> {
     const offset = (page - 1) * limit;
     
-    let query = db
+    let baseConditions = [eq(products.userId, userId)];
+    
+    if (search) {
+      baseConditions.push(
+        or(
+          sql`${products.name} ILIKE ${`%${search}%`}`,
+          sql`${products.sku} ILIKE ${`%${search}%`}`,
+          sql`${products.internalSku} ILIKE ${`%${search}%`}`
+        )
+      );
+    }
+    
+    const productsList = await db
       .select()
       .from(products)
-      .where(eq(products.userId, userId));
-    
-    if (search) {
-      query = query.where(
-        and(
-          eq(products.userId, userId),
-          or(
-            sql`${products.name} ILIKE ${`%${search}%`}`,
-            sql`${products.sku} ILIKE ${`%${search}%`}`,
-            sql`${products.internalSku} ILIKE ${`%${search}%`}`
-          )
-        )
-      );
-    }
-    
-    let countQuery = db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(products)
-      .where(eq(products.userId, userId));
-    
-    if (search) {
-      countQuery = countQuery.where(
-        and(
-          eq(products.userId, userId),
-          or(
-            sql`${products.name} ILIKE ${`%${search}%`}`,
-            sql`${products.sku} ILIKE ${`%${search}%`}`,
-            sql`${products.internalSku} ILIKE ${`%${search}%`}`
-          )
-        )
-      );
-    }
-    
-    const [totalResult] = await countQuery;
-    
-    const productsList = await query
+      .where(and(...baseConditions))
       .orderBy(desc(products.createdAt))
       .limit(limit)
       .offset(offset);
+    
+    const [totalResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(products)
+      .where(and(...baseConditions));
     
     return {
       products: productsList,
@@ -246,7 +243,13 @@ export class DatabaseStorage implements IStorage {
 
   // Amazon Listing operations
   async getAmazonListings(userId: string, amazonAccountId?: string): Promise<AmazonListing[]> {
-    let query = db
+    let conditions = [eq(products.userId, userId)];
+    
+    if (amazonAccountId) {
+      conditions.push(eq(amazonListings.amazonAccountId, amazonAccountId));
+    }
+
+    return await db
       .select({
         id: amazonListings.id,
         productId: amazonListings.productId,
@@ -262,18 +265,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(amazonListings)
       .innerJoin(products, eq(amazonListings.productId, products.id))
-      .where(eq(products.userId, userId));
-
-    if (amazonAccountId) {
-      query = query.where(
-        and(
-          eq(products.userId, userId),
-          eq(amazonListings.amazonAccountId, amazonAccountId)
-        )
-      );
-    }
-
-    return await query.orderBy(desc(amazonListings.createdAt));
+      .where(and(...conditions))
+      .orderBy(desc(amazonListings.createdAt));
   }
 
   async createAmazonListing(listing: InsertAmazonListing): Promise<AmazonListing> {
@@ -282,6 +275,14 @@ export class DatabaseStorage implements IStorage {
       .values(listing)
       .returning();
     return newListing;
+  }
+
+  async getAmazonListingBySkuAndAccount(sku: string, amazonAccountId: string): Promise<AmazonListing | undefined> {
+    const [listing] = await db
+      .select()
+      .from(amazonListings)
+      .where(and(eq(amazonListings.sku, sku), eq(amazonListings.amazonAccountId, amazonAccountId)));
+    return listing;
   }
 
   async updateAmazonListing(id: string, updates: Partial<InsertAmazonListing>): Promise<AmazonListing | undefined> {
