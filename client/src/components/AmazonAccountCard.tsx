@@ -40,7 +40,8 @@ import {
   Clock,
   Package,
   ShoppingCart,
-  DollarSign
+  DollarSign,
+  Key
 } from "lucide-react";
 
 interface AmazonAccount {
@@ -245,6 +246,25 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={async () => {
+                    try {
+                      const response = await apiRequest("GET", `/api/amazon-auth/start?accountId=${account.id}&region=${account.region}`);
+                      if (response.authUrl) {
+                        window.location.href = response.authUrl;
+                      }
+                    } catch (error) {
+                      toast({
+                        title: "Erro ao iniciar autorização",
+                        description: error instanceof Error ? error.message : "Erro desconhecido",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Key className="w-4 h-4 mr-2" />
+                  Autorizar na Amazon
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => testConnectionMutation.mutate()}>
                   <Settings className="w-4 h-4 mr-2" />
                   Testar Conexão

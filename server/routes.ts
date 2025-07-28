@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { registerAmazonRoutes } from "./routes/amazon";
+import { registerAmazonAuthRoutes } from "./routes/amazonAuth";
 import { 
   insertAmazonAccountSchema,
   insertProductSchema,
@@ -28,6 +29,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Amazon routes
   registerAmazonRoutes(app);
+  registerAmazonAuthRoutes(app);
 
   // Products routes
   app.get("/api/products", isAuthenticated, async (req: any, res) => {
