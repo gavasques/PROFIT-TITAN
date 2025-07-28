@@ -24,16 +24,22 @@ export function registerProductRoutes(app: Express) {
       const userId = req.user.claims.sub;
       const { amazonAccountId } = req.params;
 
+      console.log('🔄 Starting product sync for user:', userId, 'account:', amazonAccountId);
+
       // Verify the Amazon account belongs to the user
       const amazonAccount = await storage.getAmazonAccount(amazonAccountId);
       if (!amazonAccount) {
+        console.log('❌ Amazon account not found:', amazonAccountId);
         return res.status(404).json({ message: "Amazon account not found" });
       }
 
       if (amazonAccount.userId !== userId) {
+        console.log('❌ Access denied. Account belongs to:', amazonAccount.userId, 'Request from:', userId);
         return res.status(403).json({ message: "Access denied" });
       }
 
+      console.log('✅ Amazon account verified. Starting sync...');
+      
       // Start product sync
       const syncResult = await amazonSPService.syncProducts(amazonAccountId, userId);
 
@@ -45,10 +51,12 @@ export function registerProductRoutes(app: Express) {
 
     } catch (error) {
       console.error("Error syncing products:", error);
+      console.error("Full error details:", JSON.stringify(error, null, 2));
       res.status(500).json({ 
         success: false,
         message: "Erro ao sincronizar produtos",
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: error instanceof Error ? error.stack : error
       });
     }
   });

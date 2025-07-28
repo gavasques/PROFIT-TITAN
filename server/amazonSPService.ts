@@ -116,12 +116,16 @@ export class AmazonSPService {
         // Get marketplace ID correctly
         const marketplaceId = await this.getMarketplaceId(amazonAccountId);
         
-        // Use Listings Items API to get all products for this seller
+        // Use Listings Items API to get all products for this seller  
+        const sellerId = amazonAccount.sellerId || 'A2T1SY156TAAGD';
+        console.log('📋 Using seller ID:', sellerId);
+        console.log('📋 Using marketplace ID:', marketplaceId);
+        
         const listingsResponse = await client.callAPI({
           operation: 'getListingsItems',
           endpoint: 'listingsItems',
           path: {
-            sellerId: account.sellerId || 'A2T1SY156TAAGD', // Use seller ID from database
+            sellerId: sellerId,
           },
           query: {
             marketplaceIds: marketplaceId,
@@ -129,6 +133,9 @@ export class AmazonSPService {
             includedData: 'summaries,attributes,issues,offers,fulfillmentAvailability'
           }
         });
+
+        console.log('📦 API Response received:', !!listingsResponse);
+        console.log('📦 Response keys:', listingsResponse ? Object.keys(listingsResponse) : 'No response');
 
         if (listingsResponse && listingsResponse.items) {
           const items = listingsResponse.items;
