@@ -19,8 +19,16 @@ export const queryClient = new QueryClient({
           }
         }
         
+        // Get auth token for authenticated requests
+        const token = localStorage.getItem("auth_token");
+        const headers: any = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
         const response = await fetch(url, {
           credentials: "same-origin",
+          headers,
           signal,
         });
 
@@ -45,12 +53,20 @@ export async function apiRequest(
   url: string,
   options: RequestInit = {}
 ): Promise<any> {
+  // Get auth token
+  const token = localStorage.getItem("auth_token");
+  const headers: any = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+  
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const response = await fetch(url, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
     credentials: "same-origin",
   });
 

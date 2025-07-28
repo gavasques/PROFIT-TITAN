@@ -8,12 +8,8 @@ export function useAuth() {
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
       try {
-        // Try to get user data
-        const response = await apiRequest("/api/auth/user", {
-          headers: token ? {
-            Authorization: `Bearer ${token}`,
-          } : {},
-        });
+        // apiRequest now automatically adds the token
+        const response = await apiRequest("/api/auth/user");
         return response;
       } catch (error: any) {
         // If token is invalid, remove it
@@ -24,17 +20,14 @@ export function useAuth() {
       }
     },
     retry: false,
-    // Always try to fetch user data, regardless of token (for SKIP_AUTH mode)
+    enabled: !!token, // Only fetch if token exists
   });
 
   const logout = async () => {
     try {
-      // Call logout endpoint
+      // Call logout endpoint (apiRequest automatically adds token)
       await apiRequest("/api/auth/logout", {
         method: "POST",
-        headers: token ? {
-          Authorization: `Bearer ${token}`,
-        } : {},
       });
     } catch (error) {
       console.error("Logout error:", error);
@@ -48,7 +41,7 @@ export function useAuth() {
   return {
     user,
     isLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!token,
     logout,
     error,
   };
