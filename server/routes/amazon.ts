@@ -316,4 +316,33 @@ export function registerAmazonRoutes(app: Express) {
       res.status(500).json({ message: "Failed to delete Amazon account" });
     }
   });
+
+  // Simulate auth for testing (when real OAuth is not working)
+  app.post('/api/amazon-accounts/:id/simulate-auth', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      // Update account status to connected with simulated data
+      await storage.updateAmazonAccount(id, {
+        status: 'connected',
+        refreshToken: 'simulated_refresh_token',
+        lastSyncAt: new Date()
+      });
+      
+      console.log(`Simulated authorization for account ${id}`);
+      
+      res.json({ 
+        success: true, 
+        message: "Authorization simulated successfully" 
+      });
+      
+    } catch (error) {
+      console.error("Error simulating auth:", error);
+      res.status(500).json({ 
+        message: "Failed to simulate authorization",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 }

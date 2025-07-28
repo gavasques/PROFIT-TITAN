@@ -44,15 +44,16 @@ export default function Dashboard() {
   const { data: amazonAccounts = [], isLoading: loadingAccounts, error: accountsError } = useQuery({
     queryKey: ["/api/amazon-accounts"],
     enabled: isAuthenticated,
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        // Redirect to login on unauthorized error
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    }
   });
+
+  // Handle Amazon accounts error
+  useEffect(() => {
+    if (accountsError && isUnauthorizedError(accountsError)) {
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [accountsError]);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -215,9 +216,9 @@ export default function Dashboard() {
                     </Card>
                   ))}
                 </div>
-              ) : amazonAccounts.length > 0 ? (
+              ) : (amazonAccounts as any[]).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {amazonAccounts.map((account: any) => (
+                  {(amazonAccounts as any[]).map((account: any) => (
                     <AmazonAccountCard key={account.id} account={account} />
                   ))}
                 </div>
