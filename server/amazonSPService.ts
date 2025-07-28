@@ -141,13 +141,13 @@ export class AmazonSPService {
       } catch (apiError: any) {
         console.error('Amazon API Error:', apiError);
         
-        // If authorization fails, use sandbox mode
-        if (apiError.code === 'unauthorized_client' || apiError.message?.includes('Not authorized')) {
-          console.log('Authorization failed, falling back to sandbox mode');
-          return await this.syncProductsSandbox(amazonAccountId, userId);
-        }
+        // Update account status to reflect authorization issue
+        await storage.updateAmazonAccount(amazonAccountId, {
+          status: 'authorization_error',
+          lastSyncAt: new Date()
+        });
         
-        throw apiError;
+        throw new Error(`Erro de autorização Amazon: ${apiError.message || 'Token expirado ou inválido. Reconecte sua conta Amazon.'}`);
       }
 
     } catch (error) {
@@ -160,101 +160,7 @@ export class AmazonSPService {
     }
   }
 
-  // Sandbox mode for demonstration
-  async syncProductsSandbox(amazonAccountId: string, userId: string): Promise<{ existingCount: number, newCount: number, totalCount: number }> {
-    try {
-      // Get existing products from our database for this user
-      const existingProducts = await storage.getProductsByUserId(userId);
-      const existingSkus = new Set(existingProducts.map(p => p.sku));
-      
-      let existingCount = 0;
-      let newCount = 0;
-      
-      // Demo products to simulate Amazon inventory
-      const demoProducts = [
-        {
-          sku: 'DEMO-001',
-          title: 'Produto Demonstração 1',
-          category: 'Eletrônicos',
-          price: 59.99,
-          imageUrl: 'https://via.placeholder.com/150x150?text=Produto+1'
-        },
-        {
-          sku: 'DEMO-002', 
-          title: 'Produto Demonstração 2',
-          category: 'Casa e Jardim',
-          price: 29.99,
-          imageUrl: 'https://via.placeholder.com/150x150?text=Produto+2'
-        },
-        {
-          sku: 'DEMO-003',
-          title: 'Produto Demonstração 3', 
-          category: 'Roupas',
-          price: 89.99,
-          imageUrl: 'https://via.placeholder.com/150x150?text=Produto+3'
-        }
-      ];
 
-      for (const demoProduct of demoProducts) {
-        const isExisting = existingSkus.has(demoProduct.sku);
-        
-        if (isExisting) {
-          existingCount++;
-          
-          // Update existing product with Amazon data
-          const existingProduct = existingProducts.find(p => p.sku === demoProduct.sku);
-          if (existingProduct) {
-            await storage.updateProduct(existingProduct.id, {
-              name: demoProduct.title,
-              category: demoProduct.category,
-              imageUrl: demoProduct.imageUrl
-            });
-          }
-        } else {
-          newCount++;
-          
-          // Create new product
-          const newProduct = await storage.createProduct({
-            userId,
-            sku: demoProduct.sku,
-            internalSku: demoProduct.sku,
-            name: demoProduct.title,
-            category: demoProduct.category,
-            imageUrl: demoProduct.imageUrl,
-            description: `Produto importado da Amazon - ${demoProduct.title}`
-          });
-
-          // Create Amazon listing
-          await storage.createAmazonListing({
-            productId: newProduct.id,
-            amazonAccountId,
-            asin: `B0${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-            sku: demoProduct.sku,
-            status: 'Active',
-            currentPrice: demoProduct.price.toString(),
-            imageUrl: demoProduct.imageUrl,
-            lastSyncAt: new Date()
-          });
-        }
-      }
-
-      // Update last sync time
-      await storage.updateAmazonAccount(amazonAccountId, {
-        lastSyncAt: new Date(),
-        status: 'connected'
-      });
-
-      return {
-        existingCount,
-        newCount,
-        totalCount: existingCount + newCount
-      };
-
-    } catch (error) {
-      console.error('Error in sandbox sync:', error);
-      throw error;
-    }
-  }
 
   async syncOrders(amazonAccountId: string): Promise<void> {
     try {
