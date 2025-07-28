@@ -48,14 +48,8 @@ export function registerAmazonRoutes(app: Express) {
         status: 'connected'
       });
 
-      // Start initial sync in background
-      amazonSPService.syncProducts(account.id, userId).catch(error => {
-        console.error("Initial sync failed:", error);
-        storage.updateAmazonAccount(account.id, { 
-          status: 'error', 
-          lastSyncAt: new Date() 
-        });
-      });
+      // Skip initial sync for now - will be done manually later
+      console.log('Account created successfully, sync will be configured later');
 
       res.json(account);
     } catch (error) {
