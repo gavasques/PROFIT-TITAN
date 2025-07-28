@@ -278,30 +278,7 @@ export function AmazonAccountCard({ account }: AmazonAccountCardProps) {
                   <Key className="w-4 h-4 mr-2" />
                   Autorizar na Amazon
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={async () => {
-                    try {
-                      const response = await apiRequest(`/api/amazon-accounts/${account.id}/simulate-auth`, {
-                        method: "POST"
-                      });
-                      toast({
-                        title: "Simulação concluída",
-                        description: "Conta marcada como autorizada para testes.",
-                        variant: "default",
-                      });
-                      queryClient.invalidateQueries({ queryKey: ["/api/amazon-accounts"] });
-                    } catch (error) {
-                      toast({
-                        title: "Erro na simulação",
-                        description: error instanceof Error ? error.message : "Erro desconhecido",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  Simular Autorização (Teste)
-                </DropdownMenuItem>
+
                 <DropdownMenuItem onClick={() => testConnectionMutation.mutate()}>
                   <Settings className="w-4 h-4 mr-2" />
                   Testar Conexão
